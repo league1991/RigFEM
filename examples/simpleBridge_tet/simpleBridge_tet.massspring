@@ -1,0 +1,17 @@
+*tetMeshFilename
+../../models/simpleBridge/simpleBridge-ic_128_0.15_.1.veg
+
+*surfaceMeshFilename
+../../models/simpleBridge/simpleBridge-ic_128_0.15_.1.obj
+
+*density
+1.0
+
+*tensileStiffness
+25000.0
+
+*damping
+0.01
+
+*addGravity
+0.0

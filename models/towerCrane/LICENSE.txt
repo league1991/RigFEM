@@ -1,0 +1,20 @@
+The original triangle mesh for this example was created by Waldemar Barkowski, http://www.artworx-media.de .
+The mesh was downloaded from: http://www.sharecg.com/v/26469/View/5/3D-Model/Tower-Crane
+
+=== Original license, downloaded from http://www.sharecg.com/v/26469/View/5/3D-Model/Tower-Crane ===========
+
+This is a completely new built mesh of my previous Bryce freebie "Tower crane". As I was frequently asked for a chance to convert it for use in other applications -and there is no such chance at all- I finally rebuilt it from scratch in Hexagon and Carrara and here you`ll get an .obj...
+There are no texture maps or the like - that`s up to you...;-)) - but I recommend the use of procedural mats for quick and easy results. Quality increasements like cabin interior and so on for close up use. Import tested in Bryce, Vue and Poser.
+
+Unrestricted use, private or commercial...
+
+Have fun!
+
+(Waldemar Barkowski) c by spacebones@artworx-media.de
+
+=========
+
+We (Vega FEM authors) have processed the model (reduced polygon count) and created a volumetric mesh for it. 
+We release our processed mesh and the volumetric mesh under the same terms as specified by Waldemar Barkowski (see above).
+We contacted Waldemar Barkowski, who has kindly agreed to such a release.
+

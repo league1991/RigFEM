@@ -1,0 +1,17 @@
+*tetMeshFilename
+../../models/turtle/turtle-volumetric-heterogeneous.veg
+
+*surfaceMeshFilename
+../../models/turtle/turtle-volumetric.obj
+
+*density
+1.0
+
+*tensileStiffness
+25000.0
+
+*damping
+0.01
+
+*addGravity
+0.0

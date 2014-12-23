@@ -1,0 +1,134 @@
+# Vega Makefile header for OS X 
+
+OPTIMIZATIONFLAG=-O2
+#OPTIMIZATIONFLAG=-g
+
+OPENMPFLAG=
+#OPENMPFLAG=-fopenmp -DUSE_OPENMP
+
+CXX=g++ 
+CXXFLAGS=-Wall -Wno-write-strings $(OPTIMIZATIONFLAG) $(OPENMPFLAG)
+CXXLD=$(CXX)
+LDFLAGS=$(OPTIMIZATIONFLAG) $(OPENMPFLAG)
+
+RM=rm -f
+DYLIB_FLAG=-dynamiclib
+DYLIB_EXT=dylib
+
+L=$(R)/libraries
+
+LIBRARIES_DIR=$(L)
+
+# argument $(1) is a list of library names (e.g. "integrator minivector")
+GET_LIB_MAKEFILES=$(addsuffix /Makefile, $(addprefix $(R)/libraries/, $(1)))
+GET_LIB_FILENAMES=$(join $(addprefix $(R)/libraries/, $(1)), $(addsuffix .a, $(addprefix /lib, $(1))))
+
+INCLUDE=-I$(LIBRARIES_DIR)/include -I/usr/X11R6/include 
+
+LIBRARYPATH=-L$(LIBRARIES_DIR)/lib -L/usr/X11R6/lib/
+OPENGL_LIBS=-framework OpenGL -framework GLUT
+STANDARD_LIBS= $(OPENGL_LIBS) -framework Foundation -framework Accelerate -lz -lm $(LIBRARYPATH)
+
+GLUI_DIR=../../libraries/glui/glui-2.35/src
+GLUI_INCLUDE=-I$(GLUI_DIR)/include
+GLUI_LIB=-L$(GLUI_DIR)/lib -lglui
+SET_GLUI_RPATH=-install_name @rpath/libglui.dylib
+
+# comment the next three lines if Pardiso is available
+PARDISO_DIR=
+PARDISO_INCLUDE=
+PARDISO_LIB=
+# set PATH to Pardiso here:
+#PARDISO_DIR=/opt/intel/Compiler/11.0/056/Frameworks/mkl
+#PARDISO_INCLUDE=-I$(PARDISO_DIR)/include
+#PARDISO_LIB=-L$(PARDISO_DIR)/../../lib -L$(PARDISO_DIR)/lib/em64t -lmkl_solver_lp64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
+
+# comment the next three lines if SPOOLES is available
+SPOOLES_DIR=
+SPOOLES_INCLUDE=
+SPOOLES_LIB=
+# set PATH to SPOOLES here:
+#SPOOLES_DIR=/Users/barbic/software/SPOOLES
+#SPOOLES_INCLUDE=-I$(SPOOLES_DIR)
+#SPOOLES_LIB=$(SPOOLES_DIR)/LinSol/srcST/Bridge.a $(SPOOLES_DIR)/LinSol/srcMT/BridgeMT.a $(SPOOLES_DIR)/MT/src/spoolesMT.a $(SPOOLES_DIR)/spooles.a
+
+# === image libraries ===
+
+TIFF_DIR=
+TIFF_INCLUDE=
+TIFF_LIB=
+# set PATH to LibTIFF here:
+#TIFF_DIR=/Users/barbic/software/imageLibraries/tiff-4.0.3
+#TIFF_INCLUDE=-I$(TIFF_DIR)/libtiff
+#TIFF_LIB=$(TIFF_DIR)/libtiff/.libs/libtiff.a
+
+JPEG_DIR=
+JPEG_INCLUDE=
+JPEG_LIB=
+# set PATH to jpeglib here:
+# we are now using jpeglib-9 not jpeglib-6b which will give you hard time !!
+# jpeglib-9 can be found at ~/code/software/imageLibraries/jpeg-9
+#JPEG_DIR=/Users/barbic/software/imageLibraries/jpeg-9
+#JPEG_INCLUDE=-I$(JPEG_DIR)
+#JPEG_LIB=-L$(JPEG_DIR)/.libs -ljpeg
+
+PNG_DIR=
+PNG_INCLUDE=
+PNG_LIB=
+# set PATH to libpng here:
+#PNG_DIR=/Users/barbic/software/imageLibraries/libpng-1.6.3
+#PNG_INCLUDE=-I$(PNG_DIR)
+#PNG_LIB=-L$(PNG_DIR)/.libs -lpng16 -lz
+
+IMAGE_INCLUDE=$(TIFF_INCLUDE) $(JPEG_INCLUDE) $(PNG_INCLUDE)
+IMAGE_LIBS=$(TIFF_LIB) $(JPEG_LIB) $(PNG_LIB)
+
+# === needed for model reduction ===
+
+# the following assumes that Intel MKL is used both for Pardiso and BLAS/LAPACK
+BLASLAPACK_DIR=$(PARDISO_DIR)
+BLASLAPACK_INCLUDE=$(PARDISO_INCLUDE)
+BLASLAPACK_LIB=$(PARDISO_LIB)
+
+# === GLEW (only needed for displayObj) ===
+
+GLEW_LIB=
+
+# === needed for reducedDynamicSolver-rt and the LargeModalDeformationFactory ===
+
+CG_LIBS_DIR=
+CG_LIBS=-framework Cg
+CG_INCLUDE=
+
+# === needed for large sparse eigenvalue analysis and the LargeModalDeformationFactory ===
+
+# fortran compiler
+FXX=
+FXXFLAGS=
+FORTRAN_LIB=
+#FXX=gfortran
+#FXXFLAGS=-O3 -m64
+#FORTRAN_LIB=/usr/local/gfortran/lib/x86_64/libgfortran.a
+
+# ARPACK
+ARPACK_DIR=
+ARPACK_INCLUDE=
+ARPACK_LIB=
+#ARPACK_DIR=/Users/barbic/software/ARPACK
+#ARPACK_INCLUDE=-I$(ARPACK_DIR)/arpack++/include
+#ARPACK_LIB=$(ARPACK_DIR)/libarpack_SUN4.a
+
+# === needed only for the LargeModalDeformationFactory ===
+
+# wxWidgets
+WX_DIR=
+WX_CONFIG=
+WX_RELEASE=
+WX_VERSION=
+EXEEXT=
+#WX_DIR=/Users/barbic/software/wxMac/wxWidgets-2.9.4
+#WX_CONFIG=$(WX_DIR)/osx-build/wx-config
+#WX_RELEASE=2.9
+#WX_VERSION=$(WX_RELEASE).4
+#EXEEXT=
+

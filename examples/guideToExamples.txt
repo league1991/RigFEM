@@ -1,0 +1,11 @@
+== vv LEAST COMPLEX vv ==
+  208 vertices: beam <== trivial
+  347 vertices: turtle <== very good start (non-homogeneous material properties: backshell is made of harder material)
+  347 vertices: orthotropic turtle <== demonstrates real-time orthotropic materials
+  959 vertices: asianDragon <== demonstrates unconstrained (free-fly) motion; also demonstrates Mooney-Rivlin material
+ 4000 vertices: simpleBridge
+ 9875 vertices: towerCrane <== runs at 2 fps on our machines
+25620 vertices: tube <== offline orthotropic
+47736 vertices: dragon <== offline
+== ^^ MOST  COMPLEX ^^ ==
+

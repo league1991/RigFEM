@@ -1,0 +1,17 @@
+*cubicMeshFilename
+../../models/simpleBridge/simpleBridge_resol92-b1.155_enlarged.veg
+
+*surfaceMeshFilename
+../../models/simpleBridge/simpleBridge_resol92-b1.155_enlarged.obj
+
+*density
+1.0
+
+*tensileStiffness
+25000.0
+
+*damping
+0.01
+
+*addGravity
+0.0

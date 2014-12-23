@@ -1,0 +1,141 @@
+This is the set of files related to Expokit, the matrix exponential
+package. Please report bugs and comments to rbs@maths.uq.edu.au.
+
+This version dated: Oct 7, 1997
+URL:  http://www.maths.uq.edu.au/expokit
+
+Notes:
+======
+1. w(t) = exp(t*A)v is the analytic solution of the homogeneous 
+   ODE problem:
+               w'(t) = Aw(t),  w(0) = v
+
+2. w(t) = exp(t*A)*v + t*phi(t*A)u, where phi(z) = (exp(z)-1)/z,
+   is the analytic solution of the nonhomogeneous ODE problem:
+               w'(t) = Aw(t) + u,  w(0) = v
+
+------------------------------------------------------------------------
+
+expokit.tar.gz       complete expokit package, current release
+------------------------------------------------------------------------
+
+Otherwise...
+
+expodoc.ps  description of the methods used in the package
+README      this file
+Makefile    Fortran makefile
+expokit.f   all-in-one file, i.e., concatenation of all .f files, 
+            except BLAS, LAPACK and the aid and driver routines.
+            Hence a minimal Fortran trial would include:
+            Makefile, expokit.f, blas.f, lapack.f, mataid.f, 
+            and one of the drivers.
+
+
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+||||||||||||||||||||||||||||||||  FORTRAN  |||||||||||||||||||||||||||||
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+REAL      COMPLEX
+=======================================================================|
+                          SMALL DENSE ROUTINES
+
+dgpadm.f  zgpadm.f   exp(t*A) in full using irreducible Pade, A general
+dspadm.f  zhpadm.f   exp(t*A) in full using Pade, A symmetric/Hermitian
+dgchbv.f  zgchbv.f   exp(t*A)*v using Chebyshev, A general
+dschbv.f             exp(t*A)*v using Chebyshev, A symmetric
+dnchbv.f  znchbv.f   exp(t*A)*v using Chebyshev, A upper Hessenberg
+
+blas.f               minimal substitute to BLAS
+lapack.f             minimal substitute to LAPACK
+
+=======================================================================|
+                           LARGE SPARSE ROUTINES
+
+dmexpv.f             exp(t*A)*v using Krylov, A is a Markov matrix
+dgexpv.f  zgexpv.f   exp(t*A)*v using Krylov, A general
+dsexpv.f  zhexpv.f   exp(t*A)*v using Krylov, A symmetric/Hermitian
+dgphiv.f  zgphiv.f   exp(t*A)*v + t*phi(t*A)*u using Krylov, A general
+dsphiv.f  zhphiv.f   exp(t*A)*v + t*phi(t*A)*u using Krylov, A sym/Hem
+
+dgcnvr.f  zgcnvr.f   convert a sparse format into another one
+dgmatv.f  zgmatv.f   matrix-vector utilities
+loadhb.f             load and converts a Harwell-Boeing matrix
+
+mataid.f             concatenation of the files above (i.e., __cnvr.f, 
+                     __matv.f, and loadhb.f) 
+
+=======================================================================|
+                             SAMPLE DRIVERS
+
+sample_d.f           dense example
+sample_g.f           general example
+sample_z.f           Complex example
+sample_b.f           forward-backward example
+sample_m.f           Markov example
+sample_p.f           phi example
+
+clock.f              utility timer function - MUST BE SET BY THE USER
+		     
+c1024.crs.gz         Markov chains matrix used in sample_m.f
+gr3030.gz            Harwell-Boeing matrix used in sample_b.f
+orani678.gz          Harwell-Boeing matrix used in sample_g.f/_p.f
+bcspwr10.gz          Harwell-Boeing pattern used in sample_z.f
+
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+|||||||||||||||||||||||||||||||  MATLAB  |||||||||||||||||||||||||||||||
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+chbv.m               Chebyshev algorithm for w = exp(t*A)v
+padm.m               irreducible Pade algorithm for exp(t*A)
+phiv.m               Krylov algorithm for w = exp(t*A)*v + t*phi(t*A)u
+expv.m               Krylov algorithm for w = exp(t*A)*v
+mexpv.m              Markov algorithm for w = exp(t*A)*v
+		     
+mat2ccs.m            save matrix into an ascii file under CCS format
+mat2coo.m            save matrix into an ascii file under COO format
+mat2crs.m            save matrix into an ascii file under CRS format
+		     
+loadccs.m            load matrix from a file under CCS format
+loadcoo.m            load matrix from a file under COO format
+loadcrs.m            load matrix from a file under CRS format
+		     
+example.m            sample program illustrating the use of _expv.m
+
+
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+||||||||||||||||||||||||||||||  PLATFORMS  |||||||||||||||||||||||||||||
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+The drivers have been successfully tested on the following platforms:
+
+SUN 
+-------------------------------
+       SPARC workstation
+
+IBM
+--------------------------------
+       RS/6000 workstation
+       SP2 (one node)
+
+SGI
+--------------------------------
+       Indy workstation
+       Power Challenge (one node)
+
+
+Others? Please notify.
+
+
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+|||||||||||||||||||||||||||||||    BUGS    |||||||||||||||||||||||||||||
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+On some systems, the compilation of Expokit will generate a warning
+message about an incompatibility of type in the call of DNCHBV. This is
+due to the fact that a real array is used as argument where a complex 
+array is expected. This is an artefact to avoid an otherwise idle
+complex array in the calling routine. Thus it is not a bug as such 
+and no side-effects arise. There is a notice about this in the header 
+of DNCHBV.
+
+

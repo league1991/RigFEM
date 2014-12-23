@@ -1,0 +1,36 @@
+*globalAmbientIntensity
+0.2
+
+*enableSpecularTerm
+true
+
+#### light 3
+
+*lightEnabled_3
+true
+
+*position_3_X
+-5
+*position_3_Y
+0
+*position_3_Z
+10
+
+*lightIntensity_3
+0.7
+
+#### light 6
+
+*lightEnabled_6
+true
+
+*position_6_X
+5
+*position_6_Y
+0
+*position_6_Z
+10
+
+*lightIntensity_6
+0.7
+

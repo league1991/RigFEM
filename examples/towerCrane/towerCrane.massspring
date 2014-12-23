@@ -1,0 +1,17 @@
+*cubicMeshFilename
+../../models/towerCrane/towerCrane_resol166.veg
+
+*surfaceMeshFilename
+../../models/towerCrane/towerCrane_resol166.obj
+
+*density
+1.0
+
+*tensileStiffness
+25000.0
+
+*damping
+0.01
+
+*addGravity
+0.0

@@ -1,0 +1,14 @@
+This model was created by Jeremy Quandt, who also owns copyright on it. It was downloaded from http://www.blendswap.com.
+
+The model uses the "Creative Commons Attribution-ShareAlike 3.0", which (in layman's terms, see the actual license for the exact legal version) permits one to copy, distribute and transmit the work, as well as adapt it and make commercial use of it, under the following conditions:
+
+Attribution — You must attribute the work in the manner specified by the
+author or licensor (but not in any way that suggests that they endorse you or your use of the work).
+
+Share Alike — If you alter, transform, or build upon this work, you may distribute the resulting work only under the same or similar license to this one.
+
+Therefore, the volumetric mesh and its surface mesh (both created by Jernej Barbic) in the folder "models/turtle" are also released under "Creative Commons Attribution-ShareAlike 3.0".
+
+See the attached PDF for the license specifics, and the following URL:
+http://www.blendswap.com/licenses/
+

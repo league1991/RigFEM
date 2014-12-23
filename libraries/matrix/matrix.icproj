@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="gb2312"?>
+<VisualStudioProject
+	ProjectType="Intel C++ Project"
+	Version="12.0"
+	Name="matrix"
+	ProjectGUID="{ACF7D918-40A3-42AF-AC22-A62BFD6E4CC3}"
+	VCNestedProjectGUID="{4EE61ACB-9C26-4B93-BCE7-9D97C60F5D45}"
+	VCNestedProjectFileName="matrix.vcproj"
+	>
+	<Configurations/>
+	<Files/>
+</VisualStudioProject>

@@ -1,0 +1,8 @@
+newmtl simpleBridge
+illum 4
+Kd 0.00 0.00 0.80
+Ka 0.1 0.1 0.1
+Ks 0.2 0.2 0.2
+Ns 1000.0
+Tf 1.00 1.00 1.00
+Ni 1.00

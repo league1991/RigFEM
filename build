@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# select the OS, and compile all libraries + driver
+
+if [ `uname -s` = "Darwin" ];
+then
+  # Mac OS X
+  cd Makefile-headers
+  ./selectMacOSX
+  echo "OS selection: Mac OS X."
+  cd ..
+else
+  # Linux
+  cd Makefile-headers
+  ./selectLinux
+  echo "OS selection: Linux."
+  cd ..
+fi
+
+echo "Compiling all libraries and driver..."
+cd utilities/interactiveDeformableSimulator
+make
+
+echo "Compiling volumetric mesh utilities..."
+cd ../volumetricMeshUtilities
+make
+cd ..
+
+echo 'Note: Examples are in the "examples" subfolder. Binaries are in the "utilities/bin" subfolder.'
+

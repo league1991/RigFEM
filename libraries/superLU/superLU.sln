@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "superLU", "superLU.vcproj", "{DA236132-025F-4CC1-B974-E80AEA297BFE}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BLAS", "BLAS.vcproj", "{8A8AD236-5311-4A4C-BD5A-C3CC0C2080E1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DA236132-025F-4CC1-B974-E80AEA297BFE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{DA236132-025F-4CC1-B974-E80AEA297BFE}.Debug|Win32.Build.0 = Debug|Win32
+		{DA236132-025F-4CC1-B974-E80AEA297BFE}.Release|Win32.ActiveCfg = Release|Win32
+		{DA236132-025F-4CC1-B974-E80AEA297BFE}.Release|Win32.Build.0 = Release|Win32
+		{8A8AD236-5311-4A4C-BD5A-C3CC0C2080E1}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8A8AD236-5311-4A4C-BD5A-C3CC0C2080E1}.Debug|Win32.Build.0 = Debug|Win32
+		{8A8AD236-5311-4A4C-BD5A-C3CC0C2080E1}.Release|Win32.ActiveCfg = Release|Win32
+		{8A8AD236-5311-4A4C-BD5A-C3CC0C2080E1}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

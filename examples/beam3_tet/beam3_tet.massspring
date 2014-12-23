@@ -1,0 +1,17 @@
+*tetMeshFilename
+../../models/beam3/beam3_tet.veg
+
+*surfaceMeshFilename
+../../models/beam3/beam3_tet.obj
+
+*density
+1.0
+
+*tensileStiffness
+5000.0
+
+*damping
+0.01
+
+*addGravity
+0.0

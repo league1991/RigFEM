@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectType="typeStaticLibrary" ProjectCreator="Intel Fortran" Keyword="Static Library" Version="11.0" ProjectIdGuid="{CF0B8E4C-7E8F-4E0C-BFFA-74927D4741BB}">
+	<Platforms>
+		<Platform Name="Win32"/></Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32" OutputDirectory="$(SolutionDir)$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Interfaces="true" F77RuntimeCompatibility="true" F77IntegerConstants="true" ExternalNameUnderscore="true" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFLibrarianTool"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/></Configuration>
+		<Configuration Name="Release|Win32" OutputDirectory="$(SolutionDir)$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" F77RuntimeCompatibility="true" F77IntegerConstants="true" ExternalNameUnderscore="true"/>
+				<Tool Name="VFLibrarianTool"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/></Configuration></Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="fi;fd"/>
+		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<File RelativePath=".\cgetv0.f"/>
+		<File RelativePath=".\cnaitr.f"/>
+		<File RelativePath=".\cnapps.f"/>
+		<File RelativePath=".\cnaup2.f"/>
+		<File RelativePath=".\cnaupd.f"/>
+		<File RelativePath=".\cneigh.f"/>
+		<File RelativePath=".\cneupd.f"/>
+		<File RelativePath=".\cngets.f"/>
+		<File RelativePath=".\csortc.f"/>
+		<File RelativePath=".\cstatn.f"/>
+		<File RelativePath=".\dgetv0.f"/>
+		<File RelativePath=".\dlaqrb.f"/>
+		<File RelativePath=".\dnaitr.f"/>
+		<File RelativePath=".\dnapps.f"/>
+		<File RelativePath=".\dnaup2.f"/>
+		<File RelativePath=".\dnaupd.f"/>
+		<File RelativePath=".\dnaupe.f"/>
+		<File RelativePath=".\dnconv.f"/>
+		<File RelativePath=".\dneigh.f"/>
+		<File RelativePath=".\dneupd.f"/>
+		<File RelativePath=".\dngets.f"/>
+		<File RelativePath=".\dsaitr.f"/>
+		<File RelativePath=".\dsapps.f"/>
+		<File RelativePath=".\dsaup2.f"/>
+		<File RelativePath=".\dsaupd.f"/>
+		<File RelativePath=".\dsconv.f"/>
+		<File RelativePath=".\dseigt.f"/>
+		<File RelativePath=".\dsesrt.f"/>
+		<File RelativePath=".\dseupd.f"/>
+		<File RelativePath=".\dsgets.f"/>
+		<File RelativePath=".\dsortc.f"/>
+		<File RelativePath=".\dsortr.f"/>
+		<File RelativePath=".\dstatn.f"/>
+		<File RelativePath=".\dstats.f"/>
+		<File RelativePath=".\dstqrb.f"/>
+		<File RelativePath=".\sgetv0.f"/>
+		<File RelativePath=".\slaqrb.f"/>
+		<File RelativePath=".\snaitr.f"/>
+		<File RelativePath=".\snapps.f"/>
+		<File RelativePath=".\snaup2.f"/>
+		<File RelativePath=".\snaupd.f"/>
+		<File RelativePath=".\snaupe.f"/>
+		<File RelativePath=".\snconv.f"/>
+		<File RelativePath=".\sneigh.f"/>
+		<File RelativePath=".\sneupd.f"/>
+		<File RelativePath=".\sngets.f"/>
+		<File RelativePath=".\ssaitr.f"/>
+		<File RelativePath=".\ssapps.f"/>
+		<File RelativePath=".\ssaup2.f"/>
+		<File RelativePath=".\ssaupd.f"/>
+		<File RelativePath=".\ssconv.f"/>
+		<File RelativePath=".\sseigt.f"/>
+		<File RelativePath=".\ssesrt.f"/>
+		<File RelativePath=".\sseupd.f"/>
+		<File RelativePath=".\ssgets.f"/>
+		<File RelativePath=".\ssortc.f"/>
+		<File RelativePath=".\ssortr.f"/>
+		<File RelativePath=".\sstatn.f"/>
+		<File RelativePath=".\sstats.f"/>
+		<File RelativePath=".\sstqrb.f"/>
+		<File RelativePath=".\zgetv0.f"/>
+		<File RelativePath=".\znaitr.f"/>
+		<File RelativePath=".\znapps.f"/>
+		<File RelativePath=".\znaup2.f"/>
+		<File RelativePath=".\znaupd.f"/>
+		<File RelativePath=".\zneigh.f"/>
+		<File RelativePath=".\zneupd.f"/>
+		<File RelativePath=".\zngets.f"/>
+		<File RelativePath=".\zsortc.f"/>
+		<File RelativePath=".\zstatn.f"/></Filter>
+		<Filter Name="UTIL">
+		<File RelativePath="..\UTIL\cmout.f"/>
+		<File RelativePath="..\UTIL\cvout.f"/>
+		<File RelativePath="..\UTIL\dmout.f"/>
+		<File RelativePath="..\UTIL\dvout.f"/>
+		<File RelativePath="..\UTIL\icnteq.f"/>
+		<File RelativePath="..\UTIL\icopy.f"/>
+		<File RelativePath="..\UTIL\iset.f"/>
+		<File RelativePath="..\UTIL\iswap.f"/>
+		<File RelativePath="..\UTIL\ivout.f"/>
+		<File RelativePath="..\UTIL\second.f"/>
+		<File RelativePath="..\UTIL\smout.f"/>
+		<File RelativePath="..\UTIL\svout.f"/>
+		<File RelativePath="..\UTIL\zmout.f"/>
+		<File RelativePath="..\UTIL\zvout.f"/></Filter></Files>
+	<Globals/></VisualStudioProject>

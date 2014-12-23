@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioProject ProjectType="typeStaticLibrary" ProjectCreator="Intel Fortran" Keyword="Static Library" Version="11.0" ProjectIdGuid="{21B8DA06-8711-4160-91D0-F663F8DF9F30}">
+	<Platforms>
+		<Platform Name="Win32"/></Platforms>
+	<Configurations>
+		<Configuration Name="Debug|Win32" OutputDirectory="$(SolutionDir)$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" Interfaces="true" F77RuntimeCompatibility="true" F77IntegerConstants="true" ExternalNameUnderscore="true" Traceback="true" BoundsCheck="true" RuntimeLibrary="rtMultiThreadedDebug"/>
+				<Tool Name="VFLibrarianTool"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/></Configuration>
+		<Configuration Name="Release|Win32" OutputDirectory="$(SolutionDir)$(ConfigurationName)" ConfigurationType="typeStaticLibrary">
+				<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" F77RuntimeCompatibility="true" F77IntegerConstants="true" ExternalNameUnderscore="true"/>
+				<Tool Name="VFLibrarianTool"/>
+				<Tool Name="VFResourceCompilerTool"/>
+				<Tool Name="VFMidlTool" SuppressStartupBanner="true"/>
+				<Tool Name="VFCustomBuildTool"/>
+				<Tool Name="VFPreLinkEventTool"/>
+				<Tool Name="VFPreBuildEventTool"/>
+				<Tool Name="VFPostBuildEventTool"/></Configuration></Configurations>
+	<Files>
+		<Filter Name="Header Files" Filter="fi;fd"/>
+		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<File RelativePath=".\clock.f"/>
+		<File RelativePath=".\dgchbv.f"/>
+		<File RelativePath=".\dgcnvr.f"/>
+		<File RelativePath=".\dgexpv.f"/>
+		<File RelativePath=".\dgmatv.f"/>
+		<File RelativePath=".\dgpadm.f"/>
+		<File RelativePath=".\dgphiv.f"/>
+		<File RelativePath=".\dmexpv.f"/>
+		<File RelativePath=".\dnchbv.f"/>
+		<File RelativePath=".\dschbv.f"/>
+		<File RelativePath=".\dsexpv.f"/>
+		<File RelativePath=".\dspadm.f"/>
+		<File RelativePath=".\dsphiv.f"/>
+		<File RelativePath=".\expokit.f"/>
+		<File RelativePath=".\loadhb.f"/>
+		<File RelativePath=".\mataid.f"/>
+		<File RelativePath=".\zgchbv.f"/>
+		<File RelativePath=".\zgcnvr.f"/>
+		<File RelativePath=".\zgexpv.f"/>
+		<File RelativePath=".\zgmatv.f"/>
+		<File RelativePath=".\zgpadm.f"/>
+		<File RelativePath=".\zgphiv.f"/>
+		<File RelativePath=".\zhexpv.f"/>
+		<File RelativePath=".\zhpadm.f"/>
+		<File RelativePath=".\zhphiv.f"/>
+		<File RelativePath=".\znchbv.f"/></Filter></Files>
+	<Globals/></VisualStudioProject>

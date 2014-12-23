@@ -1,0 +1,2 @@
+Press 'e' and 'w' to see the embedded rendering mesh.
+Main program window must have focus for keys to work.
