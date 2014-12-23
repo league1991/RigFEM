@@ -1,0 +1,55 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+*.exe
+*.manifest
+*.obj
+*.dep
+*.ncb
+*.pdb
+*.pch
+*.ilk
+*.idb
+*.user
+*.aps
+*.pch
+*.vspscc
+*_i.c
+*_p.c
+*.suo
+*.tlb
+*.tlh
+*.bak
+*.cache
+*.log
+*.sbr
+Debug/*
+Release/*
+*.rar
+*.user
