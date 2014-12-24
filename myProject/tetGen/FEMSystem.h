@@ -63,27 +63,49 @@ private:
 
 	double computeValue(const EigVec& q);
 
-	static double sinKeyFrame(double t)
+	bool computeHnn(vector<int>& nIdx, vector<int>& sIdx)
 	{
-		return 3 * abs(sin(t));
-	}
-	static double zeroKeyFrame(double t)
-	{
-		return 0;
-	}
-	static double linearKeyFrame(double t)
-	{
-		return t;
+		if (!m_tangentStiffnessMatrix)
+			return false;
+		/*
+		if (!m_HnnCache)
+		{
+			m_HnnCache = new SparseMatrix();
+			SparseMatrix& Hnn = *m_HnnCache;
+
+			SparseMatrix dFnn(*m_tangentStiffnessMatrix);
+			dFnn.RemoveRowsColumns(sIdx.size(), &sIdx[0]);
+			Utilities::vegaSparse2Eigen(dFnn, Hnn, m_nIntPnt*3);
+			Hnn *= -1.0;
+
+			for (int ithInt = 0; ithInt < m_nIntPnt; ++ithInt)
+			{
+				int begIdx = ithInt*3;
+				double massTerm = m_mass[m_intPntIdx[ithInt]] / (m_h * m_h);
+				Hnn.coeffRef(begIdx, begIdx) += massTerm;	begIdx++;
+				Hnn.coeffRef(begIdx, begIdx) += massTerm;	begIdx++;
+				Hnn.coeffRef(begIdx, begIdx) += massTerm;
+			}
+		}
+		else
+		{
+
+		}*/
+		return true;
 	}
 
-	// Tengen生成的四面体网格数据
+
+	// Tengen生成的四面体网格数据,这些数据一旦生成，在模拟过程中除坐标值外不再修改
 	tetgenio		m_in, m_addin, m_bgmin, m_out;
 	vector<int>		m_surfPntIdx;						// 来自m_in的顶点（视为表面点）在m_out的索引
 	vector<int>		m_intPntIdx;						// 新加入的顶点(视为内部点)在m_out的索引
+	int				m_nTotPnt;							// 总点数
+	int				m_nIntPnt;							// 内部点（也就是自由运动的点）个数
+	int				m_nSurfPnt;							// 表面点（也就是被参数控制的点）个数
+	int				m_nParam;							// 自由参数个数
+	TetMesh*		m_tetMesh;							// 四面体网格
 
 	// 各种Vega数据结构
-	// 四面体网格
-	TetMesh*				m_tetMesh;
 	ModelWrapper*			m_modelwrapper;
 	ForceModel*				m_forceModel;
 
@@ -93,6 +115,10 @@ private:
 	EigVec					m_force;					// 受力
 	EigVec					m_param;					// 所有rig 参数排成的向量
 	SparseMatrix*			m_tangentStiffnessMatrix;
+
+	// 以下是暂存的Hessian各个分块
+	SparseMatrix*			m_HnnCache;					// 暂存的Hnn
+	
 
 	EigVec					m_mass;						// 质量
 	double					m_h;						// 时间步长

@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "Utilities.h"
-
+using namespace std;
 Utilities::Utilities(void)
 {
 }
@@ -26,6 +26,33 @@ void Utilities::vegaSparse2Eigen( const SparseMatrix& src, EigSparse& tar , int 
 		}
 	}
 	tar = EigSparse(nRows, nCols);
+	tar.setFromTriplets(triList.begin(), triList.end());
+}
+
+void Utilities::vegaSparse2Eigen( const SparseMatrix& src, 
+								  const vector<int>& rowID, const vector<int>& colID,
+								  EigSparse& tar)
+{
+	typedef Eigen::Triplet<double> Tri;
+	vector<Tri> triList;
+	for (int ithTarRow = 0; ithTarRow < rowID.size(); ++ithTarRow)
+	{
+		// 找到原矩阵对应的行
+		int ithSrcRow = rowID[ithTarRow];	
+		for (int ithSrcEntry = 0, ithTarCol = 0; ithSrcEntry < src.GetRowLength(ithSrcRow); ++ithSrcEntry)
+		{
+			int ithSrcCol = src.GetColumnIndex(ithSrcRow, ithSrcEntry);		// 原矩阵元素的列号
+			while (ithTarCol < colID.size()-1 && colID[ithTarCol] < ithSrcCol)// 找到大于等于这个列号的最小目标列号
+				ithTarCol++;
+
+			if (ithSrcCol == colID[ithTarCol])								// 若当前列在目标列号中，加入目标矩阵
+			{
+				double v = src.GetEntry(ithSrcRow, ithSrcEntry);
+				triList.push_back(Tri(ithTarRow,ithTarCol,v));
+			}
+		}
+	}
+	tar = EigSparse(rowID.size(), colID.size());
 	tar.setFromTriplets(triList.begin(), triList.end());
 }
 

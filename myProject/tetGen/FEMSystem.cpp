@@ -3,7 +3,7 @@
 
 using namespace RigFEM;
 
-RiggedMesh::RiggedMesh(void):m_tetMesh(NULL),  m_forceModel(NULL), m_h(0.1), m_t(0), m_tangentStiffnessMatrix(NULL),  m_modelwrapper(NULL)
+RiggedMesh::RiggedMesh(void):m_tetMesh(NULL),  m_forceModel(NULL), m_h(0.1), m_t(0), m_tangentStiffnessMatrix(NULL),  m_modelwrapper(NULL), m_nTotPnt(0), m_nIntPnt(0), m_nSurfPnt(0), m_nParam(0)
 {
 }
 
@@ -15,7 +15,7 @@ void RiggedMesh::init()
 {
 	char*  myArgv[] = {
 		"i:/Programs/VegaFEM-v2.1/myProject/tetGen/Debug/tetGen.exe",
-		"-pq1.3a0.1m",
+		"-pq1.3a2.1m",
 		"model/torus.off"
 	};
 	int myArgc = sizeof(myArgv)/4;
@@ -51,16 +51,16 @@ void RiggedMesh::init()
 	findOriPoints();
 
 	// 设置rig初始点
-	double* oriPnts = new double[m_surfPntIdx.size()*3];
+	double* oriPnts = new double[m_nSurfPnt*3];
 	double* p = oriPnts;
-	for (int i = 0; i < m_surfPntIdx.size(); ++i, p+=3)
+	for (int i = 0; i < m_nSurfPnt; ++i, p+=3)
 	{
 		double* pnt = m_out.pointlist + m_surfPntIdx[i]*3;
 		p[0] = pnt[0];
 		p[1] = pnt[1];
 		p[2] = pnt[2];
 	}
-	m_transRig.setInitPnts(oriPnts, m_surfPntIdx.size());
+	m_transRig.setInitPnts(oriPnts, m_nSurfPnt);
 	delete[] oriPnts;
 
 	// 构建四面体网格
@@ -70,12 +70,13 @@ void RiggedMesh::init()
 	double param[9] = {0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,1.0};
 	m_transRig.setFreeParam(param);
 
-	m_transRig.keyParam(0, zeroKeyFrame);
-	m_transRig.keyParam(1, zeroKeyFrame);
-	m_transRig.keyParam(2, sinKeyFrame);
-	m_transRig.keyParam(3, zeroKeyFrame);
-	m_transRig.keyParam(4, zeroKeyFrame);
-	m_transRig.keyParam(5, zeroKeyFrame);
+	m_transRig.keyParam(0, MathUtilities::zero);
+	m_transRig.keyParam(1, MathUtilities::zero);
+	m_transRig.keyParam(2, MathUtilities::absSin);
+	m_transRig.keyParam(3, MathUtilities::zero);
+	m_transRig.keyParam(4, MathUtilities::zero);
+	m_transRig.keyParam(5, MathUtilities::zero);
+	m_nParam = m_transRig.getNFreeParam();
 	computeRig();
 }
 
@@ -87,7 +88,7 @@ void RiggedMesh::show()
 #ifdef SHOW_TETGEN_RESULT
 	// 画出所有顶点
 	glBegin(GL_POINTS);
-	for (int i = 0; i < m_out.numberofpoints; ++i)
+	for (int i = 0; i < m_nTotPnt; ++i)
 	{
 		glVertex3dv(m_out.pointlist + i * 3);
 	}
@@ -97,7 +98,7 @@ void RiggedMesh::show()
 	glColor3f(1,0,0);
 	glPointSize(5.f);
 	glBegin(GL_POINTS);
-	for (int i = 0; i < m_surfPntIdx.size(); ++i)
+	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		glVertex3dv(m_out.pointlist + m_surfPntIdx[i] * 3);
 	}
@@ -154,7 +155,7 @@ void RiggedMesh::show()
 	glColor3f(0,1,0);
 	glPointSize(3.f);
 	glBegin(GL_POINTS);
-	for (int i = 0; i < m_surfPntIdx.size(); ++i)
+	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		int idx = m_surfPntIdx[i];
 		Vec3d p = *m_tetMesh->getVertex(idx);
@@ -207,6 +208,9 @@ void RiggedMesh::findOriPoints()
 		else
 			m_intPntIdx.push_back(i);
 	}
+	m_nIntPnt = m_intPntIdx.size();
+	m_nSurfPnt = m_surfPntIdx.size();
+	m_nTotPnt = m_out.numberofpoints;
 }
 
 bool RiggedMesh::PntPair::operator<( const PntPair& other ) const
@@ -243,7 +247,7 @@ bool RigFEM::RiggedMesh::buildTetMesh()
 	delete[] tetIDs;
 
 
-	int wrap = 1;
+	int wrap = 2;
 	CorotationalLinearFEMWrapper* wrapper = new CorotationalLinearFEMWrapper(m_tetMesh, wrap);
 	m_modelwrapper    = wrapper;
 	m_forceModel      = new CorotationalLinearFEMForceModel(wrapper, wrap);
@@ -263,22 +267,20 @@ bool RigFEM::RiggedMesh::buildTetMesh()
 
 void RigFEM::RiggedMesh::computeRig()
 {
-	EigVec res(m_surfPntIdx.size() * 3);
+	EigVec res(m_nSurfPnt * 3);
 	m_param.setZero(m_transRig.getNFreeParam());
 	m_transRig.getFreeParam(&m_param[0]);
 	m_transRig.computeValue(&res[0]);
 
-	int nTotPnt  = m_out.numberofpoints;
-	m_q.resize(nTotPnt*3);
+	m_q.resize(m_nTotPnt*3);
 	double* pQ = &m_q[0];
-	for (int i = 0; i < nTotPnt * 3; ++i)
+	for (int i = 0; i < m_nTotPnt * 3; ++i)
 		pQ[i] = 0;
 
 	const vector<Vec3d>& pntArray = m_transRig.getCurPnt();
 	const vector<Vec3d>& initPntArray = m_transRig.getInitPnt();
-	int nSurfPnt = pntArray.size();
 
-	for (int i = 0; i < nSurfPnt; ++i)
+	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		Vec3d d = pntArray[i] - initPntArray[i];
 		int idx = m_surfPntIdx[i];
@@ -287,7 +289,7 @@ void RigFEM::RiggedMesh::computeRig()
 		pQ[idx*3+2] = d[2];
 	}
 
-	m_force.resize(nTotPnt*3);
+	m_force.resize(m_nTotPnt*3);
 	m_forceModel->GetInternalForce(&m_q[0], &m_force[0]);
 
 	/*
@@ -321,57 +323,41 @@ void RigFEM::RiggedMesh::computeRig()
 }
 
 bool RigFEM::RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigSparse& Hnn, EigDense& Hnp, EigDense& Hpn, EigDense* pHpp)
-{
-	int totVtx = m_tetMesh->getNumVertices();
-	int nParam = m_transRig.getNFreeParam();
-	int nIntPnt= m_intPntIdx.size();
-	int nSurfPnt= m_surfPntIdx.size();
-
+{ 
 	// 计算指定参数下各个点的偏移量q
-	EigVec q(totVtx*3);
+	EigVec q(m_nTotPnt*3);
 	computeQ(&n[0], &p[0], t, &q[0]);
 
 	// 提取内力、tangent Stiffness matrix、质量矩阵
 	// 注意tangent stiffness matrix为实际的负值，因为系统计算出的弹力为实际的负值,因此需要先反转
-	EigVec force(totVtx*3);
+	EigVec force(m_nTotPnt*3);
 	if(!m_tangentStiffnessMatrix)
 		m_forceModel->GetTangentStiffnessMatrixTopology(&m_tangentStiffnessMatrix);
 	m_forceModel->GetForceAndMatrix(&q[0], &force[0], m_tangentStiffnessMatrix);
 	*m_tangentStiffnessMatrix *= -1;
 	force *= -1;
-	m_tangentStiffnessMatrix->SaveToMatlabFormat("tangentStiffnessMat.mat");
 
 	// 提取 dFn/dn dFn/ds dFs/dn dFs/ds,
 	// 其中Fn为内部节点受到的力，Fs为表面节点受到的力
 	// n为内部节点位置，s为表面节点位置
-	vector<int> nIdx(m_intPntIdx.size() * 3), sIdx(m_surfPntIdx.size() * 3);
-	for (int i = 0; i < m_intPntIdx.size(); ++i)
+	vector<int> nIdx(m_nIntPnt * 3), sIdx(m_nSurfPnt * 3);
+	for (int i = 0; i < m_nIntPnt; ++i)
 	{
 		nIdx[i*3]   = 3 * m_intPntIdx[i];
 		nIdx[i*3+1] = 3 * m_intPntIdx[i] + 1;
 		nIdx[i*3+2] = 3 * m_intPntIdx[i] + 2;
 	}
-	for (int i = 0; i < m_surfPntIdx.size(); ++i)
+	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		sIdx[i*3]   = 3 * m_surfPntIdx[i];
 		sIdx[i*3+1] = 3 * m_surfPntIdx[i] + 1;
 		sIdx[i*3+2] = 3 * m_surfPntIdx[i] + 2;
 	}
-	SparseMatrix dFnn(*m_tangentStiffnessMatrix);
-	SparseMatrix dFns(*m_tangentStiffnessMatrix);
-	SparseMatrix dFsn(*m_tangentStiffnessMatrix);
-	SparseMatrix dFss(*m_tangentStiffnessMatrix);
-	dFnn.RemoveRowsColumns(sIdx.size(), &sIdx[0]);
-	dFss.RemoveRowsColumns(nIdx.size(), &nIdx[0]);
-	dFns.RemoveRows(sIdx.size(), &sIdx[0]);
-	dFns.RemoveColumns(nIdx.size(), &nIdx[0]);
-	dFsn.RemoveRows(nIdx.size(), &nIdx[0]);
-	dFsn.RemoveColumns(sIdx.size(), &sIdx[0]);
 
 	// 构建矩阵Hnn = Mn / h^2 - dFn/dn
-	Utilities::vegaSparse2Eigen(dFnn, Hnn, nIntPnt*3);
+	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, nIdx, nIdx, Hnn);
 	Hnn *= -1.0;
-	for (int ithInt = 0; ithInt < m_intPntIdx.size(); ++ithInt)
+	for (int ithInt = 0; ithInt < m_nIntPnt; ++ithInt)
 	{
 		int begIdx = ithInt*3;
 		double massTerm = m_mass[m_intPntIdx[ithInt]] / (m_h * m_h);
@@ -384,22 +370,22 @@ bool RigFEM::RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double
 	EigDense J;
 	m_transRig.computeJacobian(J);
 	EigSparse dFns_e;
-	Utilities::vegaSparse2Eigen(dFns, dFns_e, nSurfPnt*3);
+	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, nIdx, sIdx, dFns_e);
 	Hnp = -1.f * dFns_e * J;
 
 	// 构建矩阵Hpn = - J' * dFs/dn
 	EigSparse dFsn_e;
-	Utilities::vegaSparse2Eigen(dFsn, dFsn_e, nIntPnt*3);
+	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, sIdx, nIdx, dFsn_e);
 	Hpn = - J.transpose() * dFsn_e;
 
 	// 构建矩阵Hpp,此矩阵计算量最大
 	if (pHpp)
 	{
-		EigVec jacobianDeri(nSurfPnt*3);
-		EigVec sResi(nSurfPnt*3);
+		EigVec jacobianDeri(m_nSurfPnt*3);
+		EigVec sResi(m_nSurfPnt*3);
 		double invH  = 1.0 / m_h;
 		double invH2 = 1.0 / (m_h * m_h);
-		for (int ithSurf = 0; ithSurf < nSurfPnt; ++ithSurf)
+		for (int ithSurf = 0; ithSurf < m_nSurfPnt; ++ithSurf)
 		{
 			int idx = m_surfPntIdx[ithSurf];
 			int idx3 = idx * 3;
@@ -411,22 +397,22 @@ bool RigFEM::RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double
 			sResi[ithSurf3] = m * ((q[idx3] - m_q[idx3]) * invH2 - m_v[idx3] * invH) - force[idx3];
 		}
 		EigDense& Hpp = *pHpp;
-		Hpp = EigDense::Zero(nParam, nParam);
+		Hpp = EigDense::Zero(m_nParam, m_nParam);
 		EigSparse dFss_e;
-		Utilities::vegaSparse2Eigen(dFss, dFss_e, nSurfPnt*3);
-		for (int i = 0; i < nParam; ++i)
+		Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, sIdx, sIdx, dFss_e);
+		for (int i = 0; i < m_nParam; ++i)
 		{
-			for (int l = 0; l < nParam; ++l)
+			for (int l = 0; l < m_nParam; ++l)
 			{
 				double& Hppil = Hpp(i,l);
 				m_transRig.computeJacobianDerivative(i,l, &jacobianDeri[0]);
-				for (int k = 0; k < nSurfPnt*3; ++k)
+				for (int k = 0; k < m_nSurfPnt*3; ++k)
 				{
 					Hppil += jacobianDeri[k] * sResi[k];
 
 					double m = m_mass[m_surfPntIdx[k/3]];
 					double v = 0;
-					for (int m = 0; m < nSurfPnt*3; ++m)
+					for (int m = 0; m < m_nSurfPnt*3; ++m)
 					{
 						v += dFss_e.coeff(k,m) * J(m,l);
 					}
@@ -441,8 +427,7 @@ bool RigFEM::RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double
 
 void RigFEM::RiggedMesh::testStep( double dt )
 {
-	int nVtx = m_out.numberofpoints;
-	int nDeg = nVtx*3;
+	int nDeg = m_nTotPnt*3;
 	if (m_q.size() != nDeg || m_force.size() != nDeg)
 		return;
 	if (m_v.size() != nDeg || m_a.size() != nDeg)
@@ -450,14 +435,14 @@ void RigFEM::RiggedMesh::testStep( double dt )
 		m_v = m_a = EigVec::Constant(nDeg,0.0);
 	}
 
-	vector<double> mass(nVtx);
+	vector<double> mass(m_nTotPnt);
 	int nIter = 1;
 	dt /= nIter;
 	while(nIter--)
 	{
 		m_forceModel->GetInternalForce(&m_q[0], &m_force[0]);
 		GenerateMassMatrix::computeVertexMasses(m_tetMesh, &mass[0]);
-		for (int i = 0; i < nVtx; ++i)
+		for (int i = 0; i < m_nTotPnt; ++i)
 		{
 			int idx = i*3;
 			m_a[idx] = -m_force[idx] / mass[i] + m_v[idx] * -10.1;  idx++;
@@ -475,20 +460,16 @@ void RigFEM::RiggedMesh::testStep( double dt )
 
 void RigFEM::RiggedMesh::computeQ( const double* n, const double* p, double t, double* q )
 {
-	int totVtx = m_tetMesh->getNumVertices();
-	int nSurfPnt= m_surfPntIdx.size();
-	int nIntPnt= m_intPntIdx.size();
-
 	EigVec s;
 	computeSurfOffset(p, t, s);
-	for (int i = 0; i < nIntPnt; ++i)
+	for (int i = 0; i < m_nIntPnt; ++i)
 	{
 		int idx = m_intPntIdx[i];
 		q[idx*3]   = n[i*3];
 		q[idx*3+1] = n[i*3+1];
 		q[idx*3+2] = n[i*3+2];
 	}
-	for (int i = 0; i < nSurfPnt; ++i)
+	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		int idx = m_surfPntIdx[i];
 		q[idx*3]   = s[i*3];
@@ -499,13 +480,9 @@ void RigFEM::RiggedMesh::computeQ( const double* n, const double* p, double t, d
 
 void RigFEM::RiggedMesh::computeQ( const double* p, double t, double* q )
 {
-	int totVtx = m_tetMesh->getNumVertices();
-	int nSurfPnt= m_surfPntIdx.size();
-	int nIntPnt= m_intPntIdx.size();
-
 	EigVec s;
 	computeSurfOffset(p, t, s);
-	for (int i = 0; i < nSurfPnt; ++i)
+	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		int idx = m_surfPntIdx[i];
 		q[idx*3]   = s[i*3];
@@ -516,11 +493,10 @@ void RigFEM::RiggedMesh::computeQ( const double* p, double t, double* q )
 
 void RigFEM::RiggedMesh::computeSurfOffset( const double* p, double t, EigVec& s )
 {
-	int nSurfPnt = m_surfPntIdx.size();
-	s = EigVec(nSurfPnt*3);
+	s = EigVec(m_nSurfPnt*3);
 	m_transRig.setTime(t);
 	m_transRig.computeValue(&s[0], p);
-	for (int i = 0; i < nSurfPnt; ++i)
+	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		int idx3 = m_surfPntIdx[i] * 3;
 		s[i*3]   -= m_out.pointlist[idx3++];
@@ -531,18 +507,12 @@ void RigFEM::RiggedMesh::computeSurfOffset( const double* p, double t, EigVec& s
 
 bool RigFEM::RiggedMesh::computeGradient( const EigVec& n, const EigVec& p, double t, EigVec& gn, EigVec& gs )
 {
-	int nIntPnt = m_intPntIdx.size();
-	int nSurfPnt= m_surfPntIdx.size();
-	int nParam  = m_transRig.getNFreeParam();
-	int totPnt  = m_tetMesh->getNumVertices();
-
-
 	// 计算给定参数下状态
-	EigVec q(totPnt*3);
+	EigVec q(m_nTotPnt*3);
 	computeQ(&n[0], &p[0], t, &q[0]);
 
 	EigVec ma = (q - m_q) / (m_h * m_h) - m_v / m_h;
-	for (int i = 0; i < totPnt; ++i)
+	for (int i = 0; i < m_nTotPnt; ++i)
 	{
 		ma[i*3]   *= m_mass[i];
 		ma[i*3+1] *= m_mass[i];
@@ -550,13 +520,13 @@ bool RigFEM::RiggedMesh::computeGradient( const EigVec& n, const EigVec& p, doub
 	}
 
 	// 计算此状态下的力
-	EigVec f(totPnt*3);
+	EigVec f(m_nTotPnt*3);
 	m_forceModel->GetInternalForce(&q[0], &f[0]);
 	f *= -1.0;
 	EigVec residual = ma - f;
 
-	gn.setZero(nIntPnt*3);
-	for (int ithN = 0; ithN < nIntPnt; ++ithN)
+	gn.setZero(m_nIntPnt*3);
+	for (int ithN = 0; ithN < m_nIntPnt; ++ithN)
 	{
 		int idx = m_intPntIdx[ithN];
 		gn[ithN*3]   = residual[idx*3];
@@ -564,8 +534,8 @@ bool RigFEM::RiggedMesh::computeGradient( const EigVec& n, const EigVec& p, doub
 		gn[ithN*3+2] = residual[idx*3+2];
 	}
 
-	gs.setZero(nSurfPnt*3);
-	for (int ithS = 0; ithS < nSurfPnt; ++ithS)
+	gs.setZero(m_nSurfPnt*3);
+	for (int ithS = 0; ithS < m_nSurfPnt; ++ithS)
 	{
 		int idx = m_surfPntIdx[ithS];
 		gs[ithS*3]   = residual[idx*3];
@@ -580,37 +550,32 @@ bool RigFEM::RiggedMesh::computeGradient( const EigVec& n, const EigVec& p, doub
 
 bool RigFEM::RiggedMesh::testHessian()
 {
-	int nIntPnt = m_intPntIdx.size();
-	int nSurfPnt= m_surfPntIdx.size();
-	int nParam  = m_transRig.getNFreeParam();
-	int nTotPnt = m_out.numberofpoints;
-
 	// 扰动上一帧状态
 	double lastT = 0;
 	double dir = (rand() % 2) ? 1.0 : -1.0;
 	double noise = 0.05 * dir;
-	m_q += EigVec::Random(nTotPnt*3) * noise;
-	m_v += EigVec::Random(nTotPnt*3) * noise;
-	m_a += EigVec::Random(nTotPnt*3) * noise ;
-	m_param += EigVec::Random(nParam)* noise;
+	m_q += EigVec::Random(m_nTotPnt*3) * noise;
+	m_v += EigVec::Random(m_nTotPnt*3) * noise;
+	m_a += EigVec::Random(m_nTotPnt*3) * noise ;
+	m_param += EigVec::Random(m_nParam)* noise;
 	computeQ(&m_param[0], lastT, &m_q[0]);
 
 	// 在上一帧的基础上计算新的假想位置
 	double noise1 = ((rand() % 2) ? 1.0 : -1.0) * 0.05;
-	EigVec n(nIntPnt*3);
-	for (int ithN = 0; ithN < nIntPnt; ++ithN)
+	EigVec n(m_nIntPnt*3);
+	for (int ithN = 0; ithN < m_nIntPnt; ++ithN)
 	{
 		int idx = m_intPntIdx[ithN];
 		n[ithN*3] = m_q[idx*3];
 		n[ithN*3+1] = m_q[idx*3+1];
 		n[ithN*3+2] = m_q[idx*3+2];
 	}
-	n += EigVec::Random(nIntPnt*3)  * noise1;
+	n += EigVec::Random(m_nIntPnt*3)  * noise1;
 
 	EigVec p = m_param;
-	p += EigVec::Random(nParam) * noise1;
-	EigVec dN = EigVec::Random(nIntPnt*3) * noise1;
-	EigVec dP = EigVec::Random(nParam)  * noise1;
+	p += EigVec::Random(m_nParam) * noise1;
+	EigVec dN = EigVec::Random(m_nIntPnt*3) * noise1;
+	EigVec dP = EigVec::Random(m_nParam)  * noise1;
 
 	EigVec gn, gp;
 	EigDense Hnp, Hpn, Hpp;
@@ -657,8 +622,7 @@ bool RigFEM::RiggedMesh::testHessian()
 
 bool RigFEM::RiggedMesh::testElasticEnergy()
 {
-	int nTotPnt = m_out.numberofpoints;
-	int nDof = nTotPnt * 3;
+	int nDof = m_nTotPnt * 3;
 
 	// 扰动当前位置
 	double noise = 0.1;
@@ -704,10 +668,9 @@ bool RigFEM::RiggedMesh::testElasticEnergy()
 
 double RigFEM::RiggedMesh::computeValue( const EigVec& n, const EigVec& p, double t)
 {
-	int totPnt  = m_tetMesh->getNumVertices();
 
 	// 计算给定参数下状态
-	EigVec q(totPnt*3);
+	EigVec q(m_nTotPnt*3);
 	computeQ(&n[0], &p[0], t, &q[0]);
 
 	return computeValue(q);
@@ -715,12 +678,10 @@ double RigFEM::RiggedMesh::computeValue( const EigVec& n, const EigVec& p, doubl
 
 double RigFEM::RiggedMesh::computeValue( const EigVec& q )
 {
-	int totPnt  = m_tetMesh->getNumVertices();
-
 	// 计算动能增量
 	double kinetic = 0;
 	EigVec acc = (q - m_q) / (m_h * m_h) - m_v / m_h;
-	for (int i = 0, idx = 0; i < totPnt; ++i)
+	for (int i = 0, idx = 0; i < m_nTotPnt; ++i)
 	{
 		kinetic += acc[idx] * m_mass[i] * acc[idx];	idx++;
 		kinetic += acc[idx] * m_mass[i] * acc[idx];	idx++;
@@ -735,37 +696,32 @@ double RigFEM::RiggedMesh::computeValue( const EigVec& q )
 
 bool RigFEM::RiggedMesh::testValue()
 {
-	int nIntPnt = m_intPntIdx.size();
-	int nSurfPnt= m_surfPntIdx.size();
-	int nParam  = m_transRig.getNFreeParam();
-	int nTotPnt = m_out.numberofpoints;
-
 	// 扰动上一帧状态
 	double lastT = 0;
 	double dir = (rand() % 2) ? 1.0 : -1.0;
 	double noise = 0.05 * dir;
-	m_q += EigVec::Random(nTotPnt*3) * noise;
-	m_v += EigVec::Random(nTotPnt*3) * noise;
-	m_a += EigVec::Random(nTotPnt*3) * noise ;
-	m_param += EigVec::Random(nParam)* noise;
+	m_q += EigVec::Random(m_nTotPnt*3) * noise;
+	m_v += EigVec::Random(m_nTotPnt*3) * noise;
+	m_a += EigVec::Random(m_nTotPnt*3) * noise ;
+	m_param += EigVec::Random(m_nParam)* noise;
 	computeQ(&m_param[0], lastT, &m_q[0]);
 
 	// 在上一帧的基础上计算新的假想位置 n,p
 	double noise1 = ((rand() % 2) ? 1.0 : -1.0) * 0.05;
-	EigVec n(nIntPnt*3);
-	for (int ithN = 0; ithN < nIntPnt; ++ithN)
+	EigVec n(m_nIntPnt*3);
+	for (int ithN = 0; ithN < m_nIntPnt; ++ithN)
 	{
 		int idx = m_intPntIdx[ithN];
 		n[ithN*3] = m_q[idx*3];
 		n[ithN*3+1] = m_q[idx*3+1];
 		n[ithN*3+2] = m_q[idx*3+2];
 	}
-	n += EigVec::Random(nIntPnt*3)  * noise1;
+	n += EigVec::Random(m_nIntPnt*3)  * noise1;
 
 	EigVec p = m_param;
-	p += EigVec::Random(nParam) * noise1;
-	EigVec dN = EigVec::Random(nIntPnt*3) * noise1;
-	EigVec dP = EigVec::Random(nParam)  * noise1;
+	p += EigVec::Random(m_nParam) * noise1;
+	EigVec dN = EigVec::Random(m_nIntPnt*3) * noise1;
+	EigVec dP = EigVec::Random(m_nParam)  * noise1;
 
 	// 计算函数值、梯度值
 	EigVec gn, gp;
@@ -797,24 +753,19 @@ bool RigFEM::RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& para
 	if (!v && !grad)
 		return false;
 
-	int totPnt  = m_tetMesh->getNumVertices();
-	int nIntPnt = m_intPntIdx.size();
-	int nSurfPnt= m_surfPntIdx.size();
-	int nParam  = m_transRig.getNFreeParam();
-
 	double t = param[0];
 	// 计算给定参数下状态
-	EigVec n(nIntPnt*3), p(nParam);
-	for (int i = 0; i < nIntPnt*3; ++i)
+	EigVec n(m_nIntPnt*3), p(m_nParam);
+	for (int i = 0; i < m_nIntPnt*3; ++i)
 	{
 		n[i] = x[i];
 	}
-	for (int i = 0; i < nParam; ++i)
+	for (int i = 0; i < m_nParam; ++i)
 	{
-		p[i] = x[i+nIntPnt*3];
+		p[i] = x[i+m_nIntPnt*3];
 	}
 
-	EigVec q(totPnt*3);
+	EigVec q(m_nTotPnt*3);
 	computeQ(&n[0], &p[0], t, &q[0]);
 
 	// 计算函数值
@@ -827,7 +778,7 @@ bool RigFEM::RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& para
 	if (grad)
 	{
 		EigVec ma = (q - m_q) / (m_h * m_h) - m_v / m_h;
-		for (int i = 0; i < totPnt; ++i)
+		for (int i = 0; i < m_nTotPnt; ++i)
 		{
 			ma[i*3]   *= m_mass[i];
 			ma[i*3+1] *= m_mass[i];
@@ -835,13 +786,13 @@ bool RigFEM::RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& para
 		}
 
 		// 计算此状态下的力
-		EigVec f(totPnt*3);
+		EigVec f(m_nTotPnt*3);
 		m_forceModel->GetInternalForce(&q[0], &f[0]);
 		f *= -1.0;
 		EigVec residual = ma - f;
 
-		EigVec gn(nIntPnt*3);
-		for (int ithN = 0; ithN < nIntPnt; ++ithN)
+		EigVec gn(m_nIntPnt*3);
+		for (int ithN = 0; ithN < m_nIntPnt; ++ithN)
 		{
 			int idx = m_intPntIdx[ithN];
 			gn[ithN*3]   = residual[idx*3];
@@ -849,8 +800,8 @@ bool RigFEM::RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& para
 			gn[ithN*3+2] = residual[idx*3+2];
 		}
 
-		EigVec gs(nSurfPnt*3);
-		for (int ithS = 0; ithS < nSurfPnt; ++ithS)
+		EigVec gs(m_nSurfPnt*3);
+		for (int ithS = 0; ithS < m_nSurfPnt; ++ithS)
 		{
 			int idx = m_surfPntIdx[ithS];
 			gs[ithS*3]   = residual[idx*3];
@@ -863,13 +814,13 @@ bool RigFEM::RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& para
 
 		grad->resizeLike(x);
 		EigVec& g = *grad;
-		for (int i = 0; i < nIntPnt*3; ++i)
+		for (int i = 0; i < m_nIntPnt*3; ++i)
 		{
 			g[i] = gn[i];
 		}
-		for (int i = 0; i < nParam; ++i)
+		for (int i = 0; i < m_nParam; ++i)
 		{
-			g[i+nIntPnt*3] = gs[i];
+			g[i+m_nIntPnt*3] = gs[i];
 		}
 	}
 	return true;
@@ -877,8 +828,7 @@ bool RigFEM::RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& para
 
 void RigFEM::RiggedMesh::setDof( EigVec&n, EigVec&p, bool proceedTime /*= true*/ )
 {
-	int nTotPnt= m_out.numberofpoints;
-	EigVec q(nTotPnt*3);
+	EigVec q(m_nTotPnt*3);
 	computeQ(&n[0], &p[0], m_t, &q[0]);
 	EigVec v = (q - m_q) / m_h;
 	EigVec a = (v - m_v) / m_h; 
@@ -895,9 +845,8 @@ void RigFEM::RiggedMesh::setDof( EigVec&n, EigVec&p, bool proceedTime /*= true*/
 void RigFEM::RiggedMesh::getDof( EigVec& n, EigVec& p )
 {
 	p = m_param;
-	int nIntPnt= m_intPntIdx.size();
-	n.resize(nIntPnt*3);
-	for (int ithInt = 0; ithInt < nIntPnt; ++ithInt)
+	n.resize(m_nIntPnt*3);
+	for (int ithInt = 0; ithInt < m_nIntPnt; ++ithInt)
 	{
 		int idx = m_intPntIdx[ithInt];
 		n(ithInt*3)   = m_q(idx*3);

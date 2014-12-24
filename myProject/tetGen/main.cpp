@@ -251,7 +251,8 @@ void keyFcn(GLubyte key,GLint xMouse,GLint yMouse)
 		isComputing = !isComputing;//g_fem.computeNextStep();
 		break;
 	case 't':
-		g_fem.m_mesh.testValue();	
+		g_fem.m_mesh.testHessian();
+		//g_fem.m_mesh.testValue();	
 		//MathUtilities::testMath();
 		break;
 	case '[':

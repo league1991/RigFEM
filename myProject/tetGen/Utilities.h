@@ -8,6 +8,9 @@ public:
 	~Utilities(void);
 
 	static void vegaSparse2Eigen(const SparseMatrix& src, EigSparse& tar, int nCols = -1);
+	
+	// 把vega矩阵的某个子矩阵转成Eigen矩阵，rowID，colID指定选中的行和列
+	static void vegaSparse2Eigen( const SparseMatrix& src, const std::vector<int>& rowID, const std::vector<int>& colID, EigSparse& tar);
 
 	// 把Eigen矩阵写到字符串
 	template<class EigMatrix>
@@ -36,6 +39,19 @@ public:
 class MathUtilities
 {
 public:
+	static double absSin(double t)
+	{
+		return 3 * abs(sin(t));
+	}
+	static double zero(double t)
+	{
+		return 0;
+	}
+	static double linear(double t)
+	{
+		return t;
+	}
+
 	// 找出插值二次函数f的最值点x,x未必在区间中
 	// a   > 0
 	// f0  = f(0)
