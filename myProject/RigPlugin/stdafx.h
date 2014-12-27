@@ -81,6 +81,7 @@
 #include <set>
 #include <fstream>
 #include <string>
+#include <float.h>
 
 // Vega
 #include "vec3d.h"
@@ -115,6 +116,7 @@ typedef Eigen::VectorXd				EigVec;
 #include "CorotationalLinearFEMWrapper.h"
 #include "rig.h"
 #include "NewtonSolver.h"
+#include "StatusRecorder.h"
 #include "FEMSystem.h"
 
 #include "globals.h"

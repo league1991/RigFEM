@@ -6,12 +6,14 @@ using namespace RigFEM;
 MTypeId RigSimulationNode::m_id(NODE_FEM_SIMULATION_ID);
 const char* RigSimulationNode::m_nodeName = NODE_FEM_SIMULATION_NAME;
 
+const char* RigSimulationNode::m_initParamName[2] = {"rigInitParameter","rInitParam"};
 const char* RigSimulationNode::m_paramName[2] = {"rigParameter","rParam"};
 const char* RigSimulationNode::m_meshName[2] = {"riggedMesh", "rMesh"};
 const char* RigSimulationNode::m_transformMatrixName[2] = {"meshTransform", "trans"};
 
 MObject RigSimulationNode::m_transformMatrix;
 MObject RigSimulationNode::m_param; 
+MObject	RigSimulationNode::m_initParam;
 MObject RigSimulationNode::m_mesh;
 
 RigSimulationNode::RigSimulationNode(void):m_box(MPoint(-0.1,-0.5,-0.1), MPoint(1.1,0.5,1.1)),m_rigMesh(NULL), m_rig(NULL), m_solver(NULL)
@@ -43,7 +45,28 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 
 	if (m_rigMesh)
 	{
-		m_rigMesh->show();
+		int curFrame = getCurFrame();
+
+		/*
+		MMatrix mat  = getMatrix();
+		double  matBuf[4][4];
+		mat.get(matBuf);
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glMultMatrixd(&matBuf[0][0]);
+		*/
+		RigStatus status;
+		bool res = m_recorder.getStatus(curFrame, status);
+		if (!res)
+			res = getInitStatus(status);
+		if (res)
+		{
+			m_rigMesh->showStatus(status);
+			const EigVec& p = status.getParam();
+			setParamPlug(&p[0], p.size());	
+		}
+
+		//glPopMatrix();
 	}
 	glPopAttrib();
 	view.endGL();
@@ -62,6 +85,18 @@ MStatus RigSimulationNode::initialize()
 	MFnTypedAttribute   tAttr;
 
 	m_param = nAttr.create(m_paramName[0], m_paramName[1], MFnNumericData::kDouble,0, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(false); 
+	nAttr.setReadable(true);
+	nAttr.setSoftMin(0);
+	nAttr.setSoftMax(1);
+	nAttr.setArray(true); 
+	nAttr.setUsesArrayDataBuilder(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_initParam = nAttr.create(m_initParamName[0], m_initParamName[1], MFnNumericData::kDouble,0, &s);
 	nAttr.setKeyable(true);
 	nAttr.setStorable(true);
 	nAttr.setHidden(false);
@@ -71,7 +106,7 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setSoftMax(1);
 	nAttr.setArray(true); 
 	nAttr.setUsesArrayDataBuilder(true);
-
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	m_mesh = tAttr.create(m_meshName[0], m_meshName[1], MFnData::kMesh, &s);
 	tAttr.setStorable(false);
@@ -80,20 +115,26 @@ MStatus RigSimulationNode::initialize()
 	tAttr.setReadable(false);
 	tAttr.setArray(false);
 	tAttr.setKeyable(true);
-
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	m_transformMatrix = mAttr.create(m_transformMatrixName[0], m_transformMatrixName[1]);
 	mAttr.setHidden(false);
 	mAttr.setReadable(false);
 	mAttr.setWritable(true);
 	mAttr.setKeyable(true);
-
 	CHECK_MSTATUS_AND_RETURN_IT(s);
+
 	s = addAttribute(m_param);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_initParam);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_mesh);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_transformMatrix);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	s = attributeAffects(m_initParam, m_param);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	return s;
 }
@@ -101,6 +142,20 @@ MStatus RigSimulationNode::initialize()
 MStatus RigSimulationNode::compute( const MPlug& plug, MDataBlock& data )
 {
 	MStatus s;
+	if (plug == m_param || plug.parent() == m_param)
+	{
+		// 设置当前状态的参数值
+		int curFrame = getCurFrame();
+		RigStatus status;
+		bool res = m_recorder.getStatus(curFrame, status);
+		if (!res)
+			res = getInitStatus(status);
+		if (!res)
+			return MStatus::kFailure;
+
+		const EigVec& p = status.getParam();
+		setParamPlug(&p[0], p.size());		
+	}
 	return s;
 }
 
@@ -130,9 +185,7 @@ void RigSimulationNode::testRig()
 	for (int ithVtx = 0; !it.isDone(&s) && ithVtx < 1; it.next(), ++ithVtx)
 	{
 		MPoint p = it.position(MSpace::kWorld);
-		char str[50];
-		sprintf(str, "%lf \t %lf \t %lf\n", p.x, p.y, p.z);
-		MGlobal::displayInfo(str);
+		PRINT_F("%lf \t %lf \t %lf\n", p.x, p.y, p.z);
 	}
 }
 
@@ -160,6 +213,7 @@ void RigSimulationNode::clearRig()
 	m_rigMesh = NULL;
 	delete m_solver;
 	m_solver = NULL;
+	m_recorder.clear();
 }
 
 bool RigSimulationNode::resetRig()
@@ -177,21 +231,23 @@ bool RigSimulationNode::resetRig()
 	if (s != MS::kSuccess)
 		return false;
 	MFnMesh meshFn(meshObj);
-	int nVtx = meshFn.numVertices();
-	if (nVtx <= 0 || meshFn.numPolygons() <= 0)
+	int nSurfVtx = meshFn.numVertices();
+	if (nSurfVtx <= 0 || meshFn.numPolygons() <= 0)
 		return false;
 
 	// 初始化rig对象
-	m_rig = new RigFEM::GeneralRig(this, nValidParam, nVtx);
+	m_rig = new RigFEM::GeneralRig(this, nValidParam, nSurfVtx);
 	m_rig->fetchParamFromNode();
 
 	// 初始化RiggedMesh对象
 	tetgenio tetMesh;
-	MBoundingBox box = meshFn.boundingBox();
 	MMatrix mat = getMatrix();
-	Global::maya2TetgenMesh(meshObj, tetMesh, mat);
-	m_rigMesh = new RigFEM::RiggedMesh();
-	bool res = m_rigMesh->init(tetMesh, m_rig);
+	bool res = MS::kSuccess == Global::maya2TetgenMesh(meshObj, tetMesh, mat);
+	if (res)
+	{
+		m_rigMesh = new RigFEM::RiggedMesh();
+		res = m_rigMesh->init(tetMesh, m_rig);
+	}
 
 	if (!res)
 	{
@@ -200,6 +256,11 @@ bool RigSimulationNode::resetRig()
 	}
 
 	m_solver = new RigFEM::NewtonSolver(m_rigMesh);
+
+	// 初始化结果记录器
+	int curFrame = getCurFrame();
+	int totPnt = m_rigMesh->getNTotPnt();
+	m_recorder.init(curFrame, totPnt*3, nValidParam);
 	return true;
 }
 
@@ -217,8 +278,73 @@ bool RigSimulationNode::stepRig()
 	if (!m_rig || !m_rigMesh || !m_solver)
 		return false;
 
-	bool res = m_solver->step();
-	return res;
+	int curFrame = getCurFrame();
+
+	// 设置上一帧状态
+	RigStatus s;
+	if (!m_recorder.getStatus(curFrame-1, s))
+	{
+		getInitStatus(s);
+	}
+	if (!m_rigMesh->setStatus(s))
+		return false;
+	
+	// 模拟
+	if(!m_solver->step())
+		return false;
+
+	// 记录结果
+	s = m_rigMesh->getStatus();
+	return m_recorder.setStatus(curFrame, s);
+}
+
+bool RigSimulationNode::getInitStatus( RigStatus& status )
+{
+	MStatus s;
+	int paramLength = m_recorder.getParamVecLength();
+	int pntLength = m_recorder.getPointVecLength();
+
+	if (paramLength <= 0 || pntLength <= 0)
+		return false;
+
+	EigVec param(paramLength);
+	MPlug paramArrayPlug = Global::getPlug(this, m_initParamName[0]);
+	for (int ithParam = 0; ithParam < paramLength; ++ithParam)
+	{
+		MPlug paramPlug = paramArrayPlug.elementByLogicalIndex(ithParam,&s);
+		if (!s)
+			break;
+		paramPlug.getValue(param[ithParam]);
+	}
+
+	EigVec q,v,a;
+	q.setZero(pntLength);
+	v.setZero(pntLength);
+	a.setZero(pntLength);
+	status = RigStatus(q,v,a,param);
+	return true;
+}
+
+int RigSimulationNode::getCurFrame()
+{
+	int curFrame = 1;
+	MGlobal::executeCommand("currentTime -q", curFrame);
+	return curFrame;
+}
+
+MStatus RigSimulationNode::setParamPlug( const double* param, int nParam )
+{
+	MStatus s;
+	MPlug paramArrayPlug = Global::getPlug(this, m_paramName[0]);
+	for (int ithParam = 0; ithParam < nParam; ++ithParam)
+	{
+		MPlug paramPlug = paramArrayPlug.elementByLogicalIndex(ithParam,&s);
+		if (!s)
+			break;
+
+		paramPlug.setValue(param[ithParam]);
+	}
+	return s;
 }
 
 

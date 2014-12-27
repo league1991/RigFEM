@@ -241,6 +241,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\StatusRecorder.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\StatusRecorder.h"
+				>
+			</File>
+			<File
 				RelativePath=".\Utilities.cpp"
 				>
 			</File>

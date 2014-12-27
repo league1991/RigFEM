@@ -58,6 +58,8 @@ public:
 			MPoint p;
 			meshFn.getPoint(ithVtx, p, MSpace::kWorld);
 			p = p * transform;
+			if (!_finite(p.x) || !_finite(p.y) || !_finite(p.z))
+				return MS::kFailure;
 			tetMesh.pointlist[ithVtx*3+0] = p.x;
 			tetMesh.pointlist[ithVtx*3+1] = p.y;
 			tetMesh.pointlist[ithVtx*3+2] = p.z;

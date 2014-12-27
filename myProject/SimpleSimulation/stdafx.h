@@ -19,3 +19,5 @@
 #include "generateMassMatrix.h"
 #include "implicitBackwardEulerSparse.h"
 #include "centraldifferencessparse.h"
+
+#define PRINT_F printf

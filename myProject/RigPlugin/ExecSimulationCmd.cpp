@@ -66,7 +66,7 @@ MStatus RigSimulateCmd::doIt( const MArgList& args )
 			}
 			else
 			{
-				MString info = "figSimulate command failed in " + name;
+				MString info = "rigSimulate command failed in " + name;
 				MGlobal::displayError(info);
 			}
 		}
@@ -82,9 +82,10 @@ void* RigSimulateCmd::creator()
 MSyntax RigSimulateCmd::newSyntax()
 {
 	MSyntax syntax;
-	syntax.addFlag(m_initFlag[1], m_initFlag[0], MSyntax::kNoArg);
-	syntax.addFlag(m_stepFlag[1], m_stepFlag[0], MSyntax::kNoArg);
-	syntax.addFlag(m_nameFlag[1], m_nameFlag[0], MSyntax::kString);
+	MStatus s;
+	s = syntax.addFlag(m_initFlag[1], m_initFlag[0], MSyntax::kNoArg);
+	s = syntax.addFlag(m_stepFlag[1], m_stepFlag[0], MSyntax::kNoArg);
+	s = syntax.addFlag(m_nameFlag[1], m_nameFlag[0], MSyntax::kString);
 	return syntax;
 }
 

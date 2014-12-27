@@ -52,4 +52,5 @@ typedef Eigen::VectorXd				EigVec;
 #include "CorotationalLinearFEMWrapper.h"
 #include "rig.h"
 #include "NewtonSolver.h"
+#include "StatusRecorder.h"
 #include "FEMSystem.h"

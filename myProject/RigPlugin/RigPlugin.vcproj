@@ -49,6 +49,7 @@
 				UsePrecompiledHeader="2"
 				WarningLevel="3"
 				DebugInformationFormat="4"
+				DisableSpecificWarnings="4018;4819"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -121,13 +122,14 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtCore&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtGui&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtNetwork&quot;;&quot;$(MAYADIR)\include&quot;"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;RIGPLUGIN_EXPORTS;_MBCS;NT_PLUGIN;REQUIRE_IOSTREAM;MAYA_PLUGIN;_BOOL;MATLAB_ENGINE;EIGEN"
+				AdditionalIncludeDirectories="&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtCore&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtGui&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtNetwork&quot;;&quot;$(MAYADIR)\include&quot;;..\tetGen; ..\..\utilities\tetgen;&quot;$(PTHREADDIR)\lib&quot;;..\..\libraries\configFile;..\..\libraries\graph;..\..\libraries\isotropicHyperelasticFEM;..\..\libraries\corotationalLinearFEM;..\..\libraries\massSpringSystem;..\..\libraries\elasticForceModel;..\..\libraries\forceModel;..\..\libraries\integrator;..\..\libraries\integratorSparse;..\..\libraries\integratorDense;..\..\libraries\lighting;..\..\libraries\sceneobject;..\..\libraries\getopts;..\..\libraries\renderVolumetricMesh;&quot;..\..\libraries\glui\glui-2.35\src\include&quot;;..\..\libraries\openGLHelper;..\..\libraries\volumetricMesh;..\..\libraries\performanceCounter;..\..\libraries\modalMatrix;..\..\libraries\loadList;..\..\libraries\camera;..\..\libraries\matrix;..\..\libraries\sparseSolver;..\..\libraries\reducedStvk;..\..\libraries\insertRows;..\..\libraries\objMesh;..\..\libraries\miniVector;..\..\libraries\matrixIO;..\..\libraries\stvk;..\..\libraries\sparseMatrix;..\..\libraries\include;..\..\libraries\eigen3;..\..\libraries\superLU\src;..\..\libraries\polarDecomposition"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;RIGPLUGIN_EXPORTS;_MBCS;NT_PLUGIN;REQUIRE_IOSTREAM;MAYA_PLUGIN;_BOOL;MATLAB_ENGINE;EIGEN;_CRT_SECURE_NO_WARNINGS;TETLIBRARY;_USE_MATH_DEFINES"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="2"
 				WarningLevel="3"
 				DebugInformationFormat="3"
+				DisableSpecificWarnings="4018;4819"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -140,10 +142,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="Foundation.lib OpenMaya.lib OpenMayaUI.lib OpenGL32.lib QtGui4.lib QtCore4.lib QtNetwork4.lib"
+				AdditionalOptions="/subsystem:windows /machine:I386 /export:initializePlugin /export:uninitializePlugin"
+				AdditionalDependencies="Foundation.lib OpenMaya.lib OpenMayaUI.lib OpenGL32.lib QtGui4.lib QtCore4.lib QtNetwork4.lib tet.lib arpack.lib forceModel.lib miniVector.lib polarDecomposition.lib pthreadVC2.lib getopts.lib configFile.lib graph.lib lighting.lib corotationalLinearFEM.lib elasticForceModel.lib isotropicHyperElasticFEM.lib sceneobject.lib camera.lib openGLHelper.lib matrix.lib massSpringSystem.lib imageIO.lib sparseMatrix.lib sparseSolver.lib loadList.lib insertRows.lib integrator.lib integratorSparse.lib modalMatrix.lib reducedStvk.lib stvk.lib renderVolumetricMesh.lib matrixIO.lib objMesh.lib volumetricMesh.lib mkl_blas95.lib mkl_blacs_dll.lib mkl_core.lib mkl_blacs_intelmpi.lib mkl_blacs_mpich2.lib mkl_intel_c.lib mkl_sequential.lib mkl_solver.lib expokit.lib superLU.lib"
 				OutputFile="$(OutDir)\$(ProjectName).mll"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;$(MAYADIR)\lib&quot;"
+				AdditionalLibraryDirectories="&quot;$(MAYADIR)\lib&quot;;..\..\utilities\tetgen\Release;..\..\Release;&quot;..\..\libraries\glui\glui-2.35\src\msvc\lib&quot;;&quot;$(PTHREADDIR)\lib\x86&quot;;..\..\libraries\superLU\lib"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
@@ -219,6 +222,14 @@
 			</File>
 			<File
 				RelativePath="..\tetGen\Rig.h"
+				>
+			</File>
+			<File
+				RelativePath="..\tetGen\StatusRecorder.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\tetGen\StatusRecorder.h"
 				>
 			</File>
 			<File

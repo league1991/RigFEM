@@ -44,16 +44,7 @@ MStatus RigFEM::GeneralRig::getMeshPoints( double* points )
 
 MStatus RigFEM::GeneralRig::setParamPlug()
 {
-	MStatus s;
-	MPlug paramArrayPlug = Global::getPlug(m_node, RigSimulationNode::paramLongName());
-	for (int ithParam = 0; ithParam < m_nParam; ++ithParam)
-	{
-		MPlug paramPlug = paramArrayPlug.elementByLogicalIndex(ithParam,&s);
-		if (!s)
-			break;
-
-		paramPlug.setValue(m_param[ithParam]);
-	}
+	MStatus s = m_node->setParamPlug(m_param, m_nParam);
 	return s;
 }
 

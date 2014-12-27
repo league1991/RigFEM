@@ -951,6 +951,89 @@ void RigFEM::RiggedMesh::clear()
 
 }
 
+RigFEM::RigStatus RigFEM::RiggedMesh::getStatus() const
+{
+	return RigStatus(m_q, m_v, m_a, m_param);
+}
+
+bool RigFEM::RiggedMesh::setStatus( const RigStatus& s )
+{
+	int pntLength = s.getPointVecLength();
+	int paramLength = s.getParamVecLength();
+	if (pntLength == m_nTotPnt * 3 &&
+		paramLength == m_nParam &&
+		pntLength == m_q.size() &&
+		pntLength == m_v.size() &&
+		pntLength == m_a.size() &&
+		paramLength == m_param.size())
+	{
+		m_q = s.getQ();
+		m_v = s.getV();
+		m_a = s.getA();
+		m_param = s.getParam();
+		return true;
+	}
+	return false;
+}
+
+bool RigFEM::RiggedMesh::showStatus( RigStatus& s )
+{
+	if (!s.matchLength(m_nTotPnt*3, m_nParam))
+		return false;
+
+	glPushAttrib(GL_CURRENT_BIT);
+	const EigVec& q = s.getQ();
+
+	// »­µã
+	glPointSize(3.f);
+	glBegin(GL_POINTS);
+	glColor3f(0,0,1);
+	for (int i = 0; i < m_intPntIdx.size(); ++i)
+	{
+		int idx = m_intPntIdx[i];
+		Vec3d v = *m_tetMesh->getVertex(idx);
+		Vec3d dV(q[idx*3], q[idx*3+1], q[idx*3+2]);
+		v += dV;
+		glVertex3d(v[0], v[1], v[2]);
+	}
+
+	glColor3f(0,1,0);
+	for (int i = 0; i < m_surfPntIdx.size(); ++i)
+	{
+		int idx = m_surfPntIdx[i];
+		Vec3d v = *m_tetMesh->getVertex(idx);
+		Vec3d dV(q[idx*3], q[idx*3+1], q[idx*3+2]);
+		v += dV;
+		glVertex3d(v[0], v[1], v[2]);
+	}
+	glEnd();
+
+	// »­±ß
+	glColor3f(0.5, 0.5,0.5);
+	glBegin(GL_LINES);
+	for(int ithTet = 0; ithTet < m_tetMesh->getNumElements(); ++ithTet)
+	{
+		Vec3d  pnt[4];
+		for (int i = 0; i < 4; ++i)
+		{
+			pnt[i] = *m_tetMesh->getVertex(ithTet, i);
+			int idx = m_tetMesh->getVertexIndex(ithTet, i);
+			pnt[i] += Vec3d(q[idx*3],q[idx*3+1],q[idx*3+2]);
+		}
+
+		int edge[6][2] = {{0,1},{0,2},{0,3},{1,2},{2,3},{3,1}};
+		for (int e = 0; e < 6; ++e)
+		{
+			glVertex3dv(&(pnt[edge[e][0]])[0]);
+			glVertex3dv(&(pnt[edge[e][1]])[0]);
+		}
+	}
+	glEnd();
+
+	glPopAttrib();
+	return true;
+}
+
 
 
 

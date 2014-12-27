@@ -19,8 +19,7 @@ public:
 	static MTypeId		m_id;
 	static const char*  m_nodeName;
 
-	void				testRig();
-
+	// 各种Plug的名字
 	static const char*	paramLongName(){return m_paramName[0];}
 	static const char*	meshLongName(){return m_meshName[0];}
 	static const char*  transformLongName(){return m_transformMatrixName[0];}
@@ -29,17 +28,25 @@ public:
 	void				clearRig();
 	bool				resetRig();
 	bool				stepRig();
+	MStatus				setParamPlug( const double* param, int nParam);
 
+	// 用于测试
+	void				testRig();
 private:
 	// 获取当前有效的参数个数
 	int					getNumParam();
 	MMatrix				getMatrix();
+	bool				getInitStatus(RigFEM::RigStatus& s);
+	int					getCurFrame();
+
 	MBoundingBox		m_box;
 
+	static MObject		m_initParam;
 	static MObject		m_param;
 	static MObject		m_mesh;
 	static MObject      m_transformMatrix;		// mesh transform matrix
 
+	static const char*  m_initParamName[2];
 	static const char*  m_paramName[2];
 	static const char*  m_meshName[2];
 	static const char*  m_transformMatrixName[2];
@@ -48,4 +55,5 @@ private:
 	RigFEM::GeneralRig*	m_rig;					// 封装了节点求值机制	
 	RigFEM::RiggedMesh*	m_rigMesh;				// fem 数据
 	RigFEM::NewtonSolver* m_solver;				// 求解器
+	RigFEM::StatusRecorder m_recorder;			// 记录求解状态		
 };

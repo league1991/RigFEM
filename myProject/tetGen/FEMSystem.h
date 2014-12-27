@@ -17,6 +17,7 @@ public:
 	bool init(tetgenio& surfMesh, RigBase* rig, double maxVolume = 1, double edgeRatio = 2);
 	void clear();
 	void show();
+	bool showStatus(RigStatus& s);
 	void computeRig();
 
 	// 计算给定状态x = [n，p] 以及时间参数param下的函数值，以及梯度
@@ -33,6 +34,12 @@ public:
 	// 更新各个自由度的状态，同时更新的有顶点位置、速度、加速度
 	void setDof(EigVec&n, EigVec&p, bool proceedTime = true);
 	double getCurTime(){return m_t;}
+
+	// 返回封装的状态
+	RigStatus getStatus()const;
+	bool setStatus(const RigStatus& s);
+
+	int getNTotPnt()const{return m_nTotPnt;}
 
 	// 各种测试函数，调试专用
 	// 给定当前的配置n,p,检查Hessian是否正确逼近
