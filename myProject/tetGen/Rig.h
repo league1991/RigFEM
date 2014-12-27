@@ -21,7 +21,7 @@ namespace RigFEM
 		void unKeyParam(int ithParam);
 
 		// 自由参数
-		int  getNFreeParam()const;
+		virtual int  getNFreeParam()const;
 		void setFreeParam(const double* params);
 		void getFreeParam(double* params)const;;
 
@@ -31,13 +31,13 @@ namespace RigFEM
 
 		// 以下是各个计算函数, 根据当前的参数和时间计算各种结果
 		// 计算当前参数下点的新坐标
-		virtual void computeValue(double* result, const double* params = 0) = 0;
+		virtual bool computeValue(double* result, const double* params = 0) = 0;
 
 		// 有限差商计算当前参数下的雅可比矩阵 dS/dP 
-		virtual void computeJacobian(Eigen::MatrixXd& jacobian);
+		virtual bool computeJacobian(Eigen::MatrixXd& jacobian);
 
 		// 有限差商计算当前参数下的 d2S / (dPi * dPj)  其中S为点向量，Pi、Pj为第i、j个参数
-		virtual void computeJacobianDerivative(int i, int j, double* res);
+		virtual bool computeJacobianDerivative(int i, int j, double* res);
 	protected:
 
 		int     m_nParam;											// 参数个数
@@ -61,7 +61,7 @@ namespace RigFEM
 		const vector<Vec3d>& getCurPnt()const{return m_curPntList;}
 		const vector<Vec3d>& getInitPnt()const{return m_initPntList;}
 
-		void computeValue(double* result, const double* params = 0);
+		virtual bool computeValue(double* result, const double* params = 0);
 		//void computeJacobian(Eigen::MatrixXd& jacobian);
 		//void computeJacobianDerivative(int i, int j, double* res);
 

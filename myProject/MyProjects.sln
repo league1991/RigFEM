@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimpleSimulation", "SimpleSimulation\SimpleSimulation.vcproj", "{1D8E5CAB-CFFC-4156-AF6F-B4180DFAC766}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tetGen", "tetGen\tetGen.vcproj", "{7B22CBF9-25C2-4EDC-9C7E-F49A6A42EF38}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RigFEM", "tetGen\tetGen.vcproj", "{7B22CBF9-25C2-4EDC-9C7E-F49A6A42EF38}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcproj", "{9B5EECC0-CCA9-4010-B3A7-E60C605D5E3C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RigFEMTest", "test\test.vcproj", "{9B5EECC0-CCA9-4010-B3A7-E60C605D5E3C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RigPlugin", "RigPlugin\RigPlugin.vcproj", "{24001E02-58FD-4AC8-A106-FD45754F82B1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,6 +27,10 @@ Global
 		{9B5EECC0-CCA9-4010-B3A7-E60C605D5E3C}.Debug|Win32.Build.0 = Debug|Win32
 		{9B5EECC0-CCA9-4010-B3A7-E60C605D5E3C}.Release|Win32.ActiveCfg = Release|Win32
 		{9B5EECC0-CCA9-4010-B3A7-E60C605D5E3C}.Release|Win32.Build.0 = Release|Win32
+		{24001E02-58FD-4AC8-A106-FD45754F82B1}.Debug|Win32.ActiveCfg = Debug|Win32
+		{24001E02-58FD-4AC8-A106-FD45754F82B1}.Debug|Win32.Build.0 = Debug|Win32
+		{24001E02-58FD-4AC8-A106-FD45754F82B1}.Release|Win32.ActiveCfg = Release|Win32
+		{24001E02-58FD-4AC8-A106-FD45754F82B1}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

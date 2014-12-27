@@ -82,7 +82,7 @@ namespace RigFEM
 		NewtonSolver(RiggedMesh* fem = NULL);
 		void setMesh(RiggedMesh* fem);
 		// ¼ÆËãº¯Êý
-		void step();
+		bool step();
 
 		void clearResult(){m_paramResult.clear();}
 		void saveResult(const char* fileName, const char* paramName = "param");

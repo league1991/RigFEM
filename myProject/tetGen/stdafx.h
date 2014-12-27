@@ -45,6 +45,8 @@ typedef Eigen::VectorXd				EigVec;
 // 体网格生成
 #include "tetgen.h"
 
+#define PRINT_F(format,...)					 printf(format, ##__VA_ARGS__)
+
 // 本地文件
 #include "Utilities.h"
 #include "CorotationalLinearFEMWrapper.h"

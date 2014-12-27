@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "Utilities.h"
 using namespace std;
+using namespace RigFEM;
 Utilities::Utilities(void)
 {
 }
@@ -71,6 +72,7 @@ void Utilities::mergeVec( const EigVec& v1, const EigVec& v2, EigVec& v )
 	}
 }
 
+
 void MathUtilities::testMath()
 {
 	double a0 = 2.291, fa0 = 2.027, dfa0 = 1.934;
@@ -81,5 +83,5 @@ void MathUtilities::testMath()
 							a1, fa1, dfa1, 
 							xMin, fxMin);
 
-	printf("xmin = %lf  fxmin = %lf\n", xMin, fxMin);
+	PRINT_F("xmin = %lf  fxmin = %lf\n", xMin, fxMin);
 }

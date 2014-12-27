@@ -1,6 +1,9 @@
 #pragma once
 
 
+namespace RigFEM
+{
+
 class Utilities
 {
 public:
@@ -11,6 +14,22 @@ public:
 	
 	// 把vega矩阵的某个子矩阵转成Eigen矩阵，rowID，colID指定选中的行和列
 	static void vegaSparse2Eigen( const SparseMatrix& src, const std::vector<int>& rowID, const std::vector<int>& colID, EigSparse& tar);
+
+	template<class EigMatrix>
+	static double maxError(const EigMatrix& m0, const EigMatrix& m1)
+	{
+		EigMatrix dm = m0 - m1;
+		double error = 0;
+		for (int r = 0; r < dm.rows(); ++r)
+		{
+			for (int c = 0; c < dm.cols(); ++c)
+			{
+				double absVal = abs(dm.coeff(r,c));
+				error = error > absVal ? error : absVal;
+			}
+		}
+		return error;
+	}
 
 	// 把Eigen矩阵写到字符串
 	template<class EigMatrix>
@@ -146,3 +165,5 @@ public:
 
 	static void testMath();
 };
+
+}

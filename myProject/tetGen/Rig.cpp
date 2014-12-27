@@ -115,7 +115,7 @@ void RigFEM::TransformRig::computeJacobianDerivative( int i, int j, double* res 
 	}
 }*/
 
-void RigFEM::TransformRig::computeValue( double* result, const double* params /*= 0*/ )
+bool RigFEM::TransformRig::computeValue( double* result, const double* params /*= 0*/ )
 {
 	if (params)
 	{
@@ -128,6 +128,7 @@ void RigFEM::TransformRig::computeValue( double* result, const double* params /*
 		result[i*3+1] = m_curPntList[i][1];
 		result[i*3+2] = m_curPntList[i][2];
 	}
+	return true;
 }
 
 RigFEM::TransformRig::TransformRig() :RigBase(9), m_translation(0.0), m_localCenter(0.0),m_scale(1.0), m_rotate(0.0)
@@ -138,7 +139,7 @@ RigFEM::TransformRig::TransformRig() :RigBase(9), m_translation(0.0), m_localCen
 }
 
 
-void RigFEM::RigBase::computeJacobianDerivative( int i, int j, double* res )
+bool RigFEM::RigBase::computeJacobianDerivative( int i, int j, double* res )
 {
 	double e = 1e-4;
 
@@ -150,26 +151,27 @@ void RigFEM::RigBase::computeJacobianDerivative( int i, int j, double* res )
 	double oldPi = p[i];
 	double oldPj = p[j];
 	vector<double> s00(nDoF), s01(nDoF), s10(nDoF), s11(nDoF);
+	bool isSucceed = true;
 
 	// p00
 	p[i] = oldPi - e;
 	p[j] = oldPj - e;
-	computeValue(&s00[0], &p[0]);
+	isSucceed &= computeValue(&s00[0], &p[0]);
 
 	// p01
 	p[i] = oldPi - e;
 	p[j] = oldPj + e;
-	computeValue(&s01[0], &p[0]);
+	isSucceed &= computeValue(&s01[0], &p[0]);
 
 	// p10
 	p[i] = oldPi + e;
 	p[j] = oldPj - e;
-	computeValue(&s10[0], &p[0]);
+	isSucceed &= computeValue(&s10[0], &p[0]);
 
 	// p11
 	p[i] = oldPi + e;
 	p[j] = oldPj + e;
-	computeValue(&s11[0], &p[0]);
+	isSucceed &= computeValue(&s11[0], &p[0]);
 
 	// 中心差商法计算
 	double invE2 = 1 / (4.0 * e * e);
@@ -182,6 +184,7 @@ void RigFEM::RigBase::computeJacobianDerivative( int i, int j, double* res )
 	p[i] = oldPi;
 	p[j] = oldPj;
 	setFreeParam(&p[0]);
+	return isSucceed;
 }
 
 void RigFEM::RigBase::keyParam( int ithParam, KeyFrameFunc func )
@@ -237,7 +240,7 @@ void RigFEM::RigBase::setTime( double t )
 	}
 }
 
-void RigFEM::RigBase::computeJacobian( Eigen::MatrixXd& jacobian )
+bool RigFEM::RigBase::computeJacobian( Eigen::MatrixXd& jacobian )
 {
 	double e = 1e-4;
 	double inv2E = 0.5 / e;
@@ -251,15 +254,16 @@ void RigFEM::RigBase::computeJacobian( Eigen::MatrixXd& jacobian )
 
 	EigVec s0(nDof), s1(nDof);
 	double* pJ = jacobian.data();
-	for (int ithParam = 0; ithParam < nParam; ++ithParam)
+	bool res = true;
+	for (int ithParam = 0; res && ithParam < nParam; ++ithParam)
 	{
 		double oldVal = p[ithParam];
 
 		p[ithParam] = oldVal - e;
-		computeValue(&s0[0], &p[0]);
+		res &= computeValue(&s0[0], &p[0]);
 
 		p[ithParam] = oldVal + e;
-		computeValue(&s1[0], &p[0]);
+		res &= computeValue(&s1[0], &p[0]);
 
 		for (int ithDof = 0; ithDof < nDof; ++ithDof)
 		{
@@ -271,6 +275,7 @@ void RigFEM::RigBase::computeJacobian( Eigen::MatrixXd& jacobian )
 	}
 
 	setFreeParam(&p[0]);
+	return res;
 }
 
 void RigFEM::RigBase::getParam( double* params )

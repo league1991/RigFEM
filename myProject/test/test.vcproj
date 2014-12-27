@@ -2,7 +2,7 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="test"
+	Name="RigFEMTest"
 	ProjectGUID="{9B5EECC0-CCA9-4010-B3A7-E60C605D5E3C}"
 	RootNamespace="test"
 	Keyword="Win32Proj"

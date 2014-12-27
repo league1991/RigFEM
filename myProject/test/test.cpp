@@ -15,7 +15,7 @@ void testLineSearch()
 	dx[0] = 1;
 	double a;
 	int res = ls.lineSearch(x, dx, a);
-	printf("%lf\n");
+	PRINT_F("%lf\n");
 }
 
 int main(int argc, char* argv[])

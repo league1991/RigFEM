@@ -2,7 +2,7 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="tetGen"
+	Name="RigFEM"
 	ProjectGUID="{7B22CBF9-25C2-4EDC-9C7E-F49A6A42EF38}"
 	RootNamespace="tetGen"
 	Keyword="Win32Proj"

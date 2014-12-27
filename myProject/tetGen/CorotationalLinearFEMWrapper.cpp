@@ -150,12 +150,12 @@ double CorotationalLinearFEMWrapper::computeElasticEnergy(const double* u)
 		  energy += eleEnergy2;
 		  if (abs(eleEnergy2 - eleEnergy) / eleEnergy > 0.01)
 		  {
-			  printf("%dth element: energy1 = %lf energy2 = %lf error = %lf\n", el, eleEnergy, eleEnergy2, eleEnergy2 - eleEnergy);
+			  PRINT_F("%dth element: energy1 = %lf energy2 = %lf error = %lf\n", el, eleEnergy, eleEnergy2, eleEnergy2 - eleEnergy);
 			  for (int i = 0; i < 9; ++i)
 			  {
-				  printf("%lf ", S[i]);
+				  PRINT_F("%lf ", S[i]);
 			  }
-			  printf("\n");
+			  PRINT_F("\n");
 		  }
 #endif
 		}

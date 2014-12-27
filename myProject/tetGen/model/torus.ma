@@ -1,6 +1,6 @@
 //Maya ASCII 2013 scene
 //Name: torus.ma
-//Last modified: Tue, Dec 23, 2014 05:03:39 PM
+//Last modified: Wed, Dec 24, 2014 02:41:56 PM
 //Codeset: 936
 requires maya "2013";
 requires "MatlabPlugin" "1.0";
@@ -12,12 +12,12 @@ fileInfo "cutIdentifier" "201202220241-825136";
 fileInfo "osv" "Microsoft Business Edition, 64-bit  (Build 9200)\n";
 createNode transform -s -n "persp";
 	setAttr ".v" no;
-	setAttr ".t" -type "double3" -10.7025602222103 3.0924558069550248 2.3334444144850042 ;
-	setAttr ".r" -type "double3" -15.938352729617913 -88.599999999984163 0 ;
+	setAttr ".t" -type "double3" -6.9311648348295511 6.0463314389701193 6.1102337741430208 ;
+	setAttr ".r" -type "double3" -34.538352729638476 -53.399999999982278 2.6672442018169853e-015 ;
 createNode camera -s -n "perspShape" -p "persp";
 	setAttr -k off ".v" no;
 	setAttr ".fl" 34.999999999999986;
-	setAttr ".coi" 11.608517246839536;
+	setAttr ".coi" 11.182231227909018;
 	setAttr ".imn" -type "string" "persp";
 	setAttr ".den" -type "string" "persp_depth";
 	setAttr ".man" -type "string" "persp_mask";
@@ -68,15 +68,14 @@ createNode transform -n "transform1";
 createNode matlab -n "matlab1" -p "transform1";
 	setAttr -k off ".v";
 	setAttr ".imUpdate" yes;
-	setAttr ".instStr" -type "string" "frame = in0;\n\nparamRes;\n\nv = param(frame,:);\n\nout0 = [v(1) v(2) v(3)];\nout1 = [v(7) v(8) v(9)];\n\n";
-	setAttr ".curDir" -type "string" "I:\\Programs\\VegaFEM-v2.1\\myProject\\tetGen";
+	setAttr ".instStr" -type "string" "frame = in0;\n\ntorusRes;\n\nv = param(frame*2,:);\n\nout0 = [v(1) v(2) v(3)];\nout1 = [v(7) v(8) v(9)];\n\n";
+	setAttr ".curDir" -type "string" "I:\\Programs\\VegaFEM-v2.1\\myProject\\tetGen\\model";
 	setAttr ".res" -type "string" (
 		"");
 	setAttr -s 2 ".outMat";
 createNode transform -n "torus:Mesh";
 createNode mesh -n "torus:MeshShape" -p "torus:Mesh";
 	setAttr -k off ".v";
-	setAttr -s 2 ".iog";
 	setAttr ".iog[0].og[0].gcl" -type "componentList" 1 "f[0:399]";
 	setAttr ".uvst[0].uvsn" -type "string" "map1";
 	setAttr ".cuvs" -type "string" "map1";
@@ -1092,13 +1091,13 @@ createNode expression -n "expression1";
 	setAttr ".ixp" -type "string" ".O[0] = frame";
 createNode matrix2Data -n "matrix2Data1";
 	setAttr -s 2 ".iPnts";
-	setAttr -s 2 ".oPnts[0:1]" -type "double3" 0 0 1.02744 1.13812 1.04776 
-		0.968803;
+	setAttr -s 2 ".oPnts[0:1]" -type "double3" 0 0 2.05538 0.927418 1.07783 
+		1.07503;
 	setAttr -s 2 ".oPnts";
 createNode hyperGraphInfo -n "nodeEditorPanel1Info";
 createNode hyperView -n "hyperView1";
-	setAttr ".vl" -type "double2" -46.087881191186774 -43754.851874395157 ;
-	setAttr ".vh" -type "double2" 1382.8960778185703 -41378.686977037934 ;
+	setAttr ".vl" -type "double2" -356.54346622369883 -43778.067552602442 ;
+	setAttr ".vh" -type "double2" 1086.4714839424141 -41378.571428571435 ;
 	setAttr ".dag" no;
 createNode hyperLayout -n "hyperLayout1";
 	setAttr ".ihi" 0;
@@ -1197,7 +1196,7 @@ createNode script -n "uiConfigurationScriptNode";
 		+ "        }\n\n        panelHistory -e -clear mainPanelHistory;\n        setFocus `paneLayout -q -p1 $gMainPane`;\n        sceneUIReplacement -deleteRemaining;\n        sceneUIReplacement -clear;\n\t}\n\n\ngrid -spacing 5 -size 12 -divisions 5 -displayAxes yes -displayGridLines yes -displayDivisionLines yes -displayPerspectiveLabels no -displayOrthographicLabels no -displayAxesBold yes -perspectiveLabelPosition axis -orthographicLabelPosition edge;\nviewManip -drawCompass 0 -compassAngle 0 -frontParameters \"\" -homeParameters \"\" -selectionLockParameters \"\";\n}\n");
 	setAttr ".st" 3;
 createNode script -n "sceneConfigurationScriptNode";
-	setAttr ".b" -type "string" "playbackOptions -min 1 -max 300 -ast 1 -aet 300 ";
+	setAttr ".b" -type "string" "playbackOptions -min 1 -max 600 -ast 1 -aet 600 ";
 	setAttr ".st" 6;
 createNode shadingEngine -n "torus:material_0";
 	setAttr ".ihi" 0;
@@ -1211,8 +1210,8 @@ createNode phong -n "torus:material_1";
 	setAttr ".sc" -type "float3" 1 1 1 ;
 	setAttr ".cp" 2;
 select -ne :time1;
-	setAttr ".o" 186;
-	setAttr ".unw" 186;
+	setAttr ".o" 145;
+	setAttr ".unw" 145;
 select -ne :renderPartition;
 	setAttr -s 3 ".st";
 select -ne :initialShadingGroup;

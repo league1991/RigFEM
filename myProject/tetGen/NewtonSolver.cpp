@@ -185,7 +185,7 @@ RigFEM::LineSearch::LineSearch( ObjectFunction* objFun /*= NULL*/, double initSt
 
 }
 
-void RigFEM::NewtonSolver::step()
+bool RigFEM::NewtonSolver::step()
 {
 	EigVec p,n;
 	m_fem->getDof(n,p);
@@ -195,6 +195,7 @@ void RigFEM::NewtonSolver::step()
 	EigVec tVec(1);
 	tVec[0] = t;
 
+	bool isSucceed = true;
 	EigDense  Hpp, Hnp, Hpn;
 	EigSparse Hnn;
 	EigVec	 G,G0,x,dx,dN,dP,dGN,dGP;
@@ -204,13 +205,16 @@ void RigFEM::NewtonSolver::step()
 		// 计算当前q p值的函数值、梯度值和Hessian
 		double   f;
 		Utilities::mergeVec(n,p,x);							// x = [n p]
-		m_fem->computeValueAndGrad(x, tVec, &f, &G);
+		isSucceed &= m_fem->computeValueAndGrad(x, tVec, &f, &G);
 		Eigen::Map<EigVec> Gn(&G[0], nIntDof);				// G = [Gn Gp]
 		Eigen::Map<EigVec> Gp(&G[0]+nIntDof, nParam);
 
 		// 计算Hessian
 		EigDense* pHpp = &Hpp;//ithIter == 0 ? &Hpp : NULL;
-		m_fem->computeHessian(n,p, t, Hnn, Hnp, Hpn, pHpp);
+		isSucceed &= m_fem->computeHessian(n,p, t, Hnn, Hnp, Hpn, pHpp);
+		if (!isSucceed)
+			return false;
+
 		if (ithIter > 0 && 0)
 		{
 			// 利用BFGS方法计算Hpp
@@ -237,8 +241,8 @@ void RigFEM::NewtonSolver::step()
 		solver.compute(Hnn);
 		if(solver.info()!=Eigen::Success) 
 		{
-			printf("LU factorization FAILED!\n");
-			return;
+			PRINT_F("LU factorization FAILED!\n");
+			return false;
 		}
 		EigDense invHnnHnp(nIntDof, nParam);
 		for (int ithParam = 0; ithParam < nParam; ++ithParam)
@@ -261,9 +265,9 @@ void RigFEM::NewtonSolver::step()
 		double a;
 		//m_lineSearch.setInitStep(3.05);
 		int res = m_lineSearch.lineSearch(x,dx,tVec,a, &f, &df);
-		if (res == 0 && a > 1e-3)
+		if (res == 0 && a > 1e-4)
 		{
-			printf("a = %lf\n", a);
+			PRINT_F("a = %lf\n", a);
 			if (a != 1.0)
 			{
 				dN *= a;
@@ -272,7 +276,7 @@ void RigFEM::NewtonSolver::step()
 		}
 		else
 		{
-			printf("line search failed: a = %lf\n", a);
+			PRINT_F("line search failed: a = %lf\n", a);
 		}
 
 		// 计算残差
@@ -287,7 +291,7 @@ void RigFEM::NewtonSolver::step()
 		n += dN;
 		p += dP;
 
-		printf("|dN|=%le |dP|=%le |resiN|∞=%le |resiP|∞=%le\n", dN.norm(), dP.norm(), resiN.maxCoeff(), resiP.maxCoeff());
+		PRINT_F("|dN|=%le |dP|=%le |resiN|∞=%le |resiP|∞=%le\n", dN.norm(), dP.norm(), resiN.maxCoeff(), resiP.maxCoeff());
 
 		
 		if (resiN.maxCoeff() < 1e-5 && resiP.maxCoeff() < 1e-5)
@@ -302,20 +306,22 @@ void RigFEM::NewtonSolver::step()
 	m_fem->setDof(n, p);
 
 	// 记录新状态
-	int nTotParam = m_fem->m_transRig.getNParam();
+	int nTotParam = m_fem->m_transRig->getNParam();
 	EigVec totParam(nTotParam);
-	m_fem->m_transRig.getParam(&totParam[0]);
+	m_fem->m_transRig->getParam(&totParam[0]);
 	m_paramResult.push_back(totParam);
 
 	// 输出状态
-	printf("time: %.2lf\n", t);
-	printf("new params:\n");
+	PRINT_F("time: %.2lf\n", t);
+	PRINT_F("new params:\n");
 	for (int i = 0; i < nParam; ++i)
 	{
-		printf("%.2lf ", p[i]);
+		PRINT_F("%.2lf ", p[i]);
 	}
-	printf("\n");
-	printf("newton iteration end.\n");
+	PRINT_F("\n");
+	PRINT_F("newton iteration end.\n");
+
+	return true;
 }
 
 RigFEM::NewtonSolver::NewtonSolver( RiggedMesh* fem ) :m_fem(fem), m_maxIter(10), m_lineSearch(fem)

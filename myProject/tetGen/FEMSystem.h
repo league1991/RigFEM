@@ -11,8 +11,11 @@ class RiggedMesh :public ObjectFunction
 public:
 	RiggedMesh(void);
 	~RiggedMesh(void);
-
+ 
 	void init();
+	// 用表面网格和rig对象初始化，rig由外部负责释放
+	bool init(tetgenio& surfMesh, RigBase* rig, double maxVolume = 1, double edgeRatio = 2);
+	void clear();
 	void show();
 	void computeRig();
 
@@ -41,7 +44,7 @@ public:
 	void testStep(double dt);
 	
 	// rig数据
-	TransformRig	m_transRig;
+	RigBase*	m_transRig;
 
 private:
 	struct PntPair
@@ -51,15 +54,15 @@ private:
 		bool  operator<(const PntPair& other)const;
 	};
 
-	void findOriPoints();
-	bool buildTetMesh();
+	bool findOriPoints(tetgenio& in, tetgenio& out);
+	bool buildVegaData();
 
 	// 由内部点偏移n和参数p更新所有点的偏移q
-	void computeQ(const double* n, const double* p, double t, double* q);
+	bool computeQ(const double* n, const double* p, double t, double* q);
 	// 只更新被参数p影响的点的位置
-	void computeQ(const double* p, double t, double* q);
+	bool computeQ(const double* p, double t, double* q);
 	// 计算表面点的偏移量
-	void computeSurfOffset(const double* p, double t, EigVec& s);
+	bool computeSurfOffset(const double* p, double t, EigVec& s);
 
 	double computeValue(const EigVec& q);
 
@@ -96,7 +99,7 @@ private:
 
 
 	// Tengen生成的四面体网格数据,这些数据一旦生成，在模拟过程中除坐标值外不再修改
-	tetgenio		m_in, m_addin, m_bgmin, m_out;
+	tetgenio		m_out;
 	vector<int>		m_surfPntIdx;						// 来自m_in的顶点（视为表面点）在m_out的索引
 	vector<int>		m_intPntIdx;						// 新加入的顶点(视为内部点)在m_out的索引
 	int				m_nTotPnt;							// 总点数
@@ -116,16 +119,9 @@ private:
 	EigVec					m_param;					// 所有rig 参数排成的向量
 	SparseMatrix*			m_tangentStiffnessMatrix;
 
-	// 以下是暂存的Hessian各个分块
-	SparseMatrix*			m_HnnCache;					// 暂存的Hnn
-	
-
 	EigVec					m_mass;						// 质量
 	double					m_h;						// 时间步长
 	double					m_t;						// 当前时刻
-
-	// 记录模拟出来的参数变化
-	vector<EigVec>			m_paramResult;				// 参数向量，包括关键帧驱动的参数，和模拟出来的参数
 };
 
 class FEMSystem

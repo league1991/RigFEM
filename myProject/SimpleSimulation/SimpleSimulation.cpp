@@ -10,11 +10,11 @@ int main(int argc, char* argv[])
 	VolumetricMesh* volumetricMesh = VolumetricMeshLoader::load(inputFileName);
 	if (volumetricMesh == NULL)
 	{
-		printf("load failed!");
+		PRINT_F("load failed!");
 	}
 	else 
 	{
-		printf("%d vertices, %d elements", volumetricMesh->getNumVertices(), volumetricMesh->getNumElements());
+		PRINT_F("%d vertices, %d elements", volumetricMesh->getNumVertices(), volumetricMesh->getNumElements());
 	}
 
 	TetMesh* tetMesh;
@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
 		tetMesh = (TetMesh*) volumetricMesh;
 	}
 	else 
-		printf("not a tet mesh\n");
+		PRINT_F("not a tet mesh\n");
 
 	CorotationalLinearFEM* deformableModel = new CorotationalLinearFEM(tetMesh);
 	ForceModel* forceModel = new CorotationalLinearFEMForceModel(deformableModel);
@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
 	GenerateMassMatrix::computeMassMatrix(tetMesh, &massMatrix, true);
 	massMatrix->SaveToMatlabFormat("massMatrix.m");
 
-	printf("%d rows, %d cols\n", massMatrix->GetNumRows(), massMatrix->GetNumColumns());
+	PRINT_F("%d rows, %d cols\n", massMatrix->GetNumRows(), massMatrix->GetNumColumns());
 	int positiveDefiniteSolver = 0;
 
 	int numConstrainedDOFs = 9;
@@ -64,10 +64,10 @@ int main(int argc, char* argv[])
 			integrator->SetExternalForces(f);
 		}
 		integrator->GetqState(u);
-		printf("v = [", i);
+		PRINT_F("v = [", i);
 		for (int ithVtx = 0; ithVtx < nVtx; ++ithVtx)
-			printf("%lf, %lf, %lf\n", u[ithVtx*3],u[ithVtx*3+1],u[ithVtx*3+2]);
-		printf("];");
+			PRINT_F("%lf, %lf, %lf\n", u[ithVtx*3],u[ithVtx*3+1],u[ithVtx*3+2]);
+		PRINT_F("];");
 
 		integrator->DoTimestep();
 	}
