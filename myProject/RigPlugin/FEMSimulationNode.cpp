@@ -1,20 +1,32 @@
 #include "StdAfx.h"
 #include "FEMSimulationNode.h"
 
-using namespace RigFEM;
+using namespace RigFEM; 
 
-MTypeId RigSimulationNode::m_id(NODE_FEM_SIMULATION_ID);
+MTypeId RigSimulationNode::m_id(NODE_FEM_SIMULATION_ID); 
 const char* RigSimulationNode::m_nodeName = NODE_FEM_SIMULATION_NAME;
 
 const char* RigSimulationNode::m_initParamName[2] = {"rigInitParameter","rInitParam"};
 const char* RigSimulationNode::m_paramName[2] = {"rigParameter","rParam"};
 const char* RigSimulationNode::m_meshName[2] = {"riggedMesh", "rMesh"};
 const char* RigSimulationNode::m_transformMatrixName[2] = {"meshTransform", "trans"};
+const char*	RigSimulationNode::m_tetEdgeRatioName[2]={"tetEdgeRatio", "edgeRatio"};			// 体网格化参数，四面体边比例
+const char*	RigSimulationNode::m_tetMaxVolumeName[2]={"tetMaxVolume", "maxVolume"};			// 体网格化参数，四面体最大体积
+const char*	RigSimulationNode::m_youngModulusName[2]={"youngModulus", "yModulus"};			// 杨氏模量
+const char*	RigSimulationNode::m_nuName[2] = {"nu","nu"};					// 控制不同轴向变形影响程度的参数
+const char*	RigSimulationNode::m_densityName[2]={"density","den"};				// 密度
+const char*	RigSimulationNode::m_stepTimeName[2]={"stepTime","dt"};				// 时间步长
 
 MObject RigSimulationNode::m_transformMatrix;
-MObject RigSimulationNode::m_param; 
+MObject RigSimulationNode::m_param;   
 MObject	RigSimulationNode::m_initParam;
 MObject RigSimulationNode::m_mesh;
+MObject	RigSimulationNode::m_tetEdgeRatio;			// 体网格化参数，四面体边比例
+MObject	RigSimulationNode::m_tetMaxVolume;			// 体网格化参数，四面体最大体积
+MObject	RigSimulationNode::m_youngModulus;			// 杨氏模量
+MObject	RigSimulationNode::m_nu;					// 控制不同轴向变形相互影响的参数
+MObject	RigSimulationNode::m_density;				// 密度
+MObject	RigSimulationNode::m_stepTime;				// 时间步长
 
 RigSimulationNode::RigSimulationNode(void):m_box(MPoint(-0.1,-0.5,-0.1), MPoint(1.1,0.5,1.1)),m_rigMesh(NULL), m_rig(NULL), m_solver(NULL)
 {
@@ -63,7 +75,7 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 		{
 			m_rigMesh->showStatus(status);
 			const EigVec& p = status.getParam();
-			setParamPlug(&p[0], p.size());	
+			setParamPlug(&p[0], p.size());
 		}
 
 		//glPopMatrix();
@@ -108,6 +120,69 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setUsesArrayDataBuilder(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
+	m_tetEdgeRatio = nAttr.create(m_tetEdgeRatioName[0], m_tetEdgeRatioName[1], MFnNumericData::kDouble,2.0, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(1.01);
+	nAttr.setMax(10);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_tetMaxVolume = nAttr.create(m_tetMaxVolumeName[0], m_tetMaxVolumeName[1], MFnNumericData::kDouble,5.0, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0.01);
+	nAttr.setSoftMax(10);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_youngModulus = nAttr.create(m_youngModulusName[0], m_youngModulusName[1], MFnNumericData::kDouble,1e6, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0.01);
+	nAttr.setSoftMin(1e5);
+	nAttr.setSoftMax(1e6);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_nu = nAttr.create(m_nuName[0], m_nuName[1], MFnNumericData::kDouble,0.45, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0.01);
+	nAttr.setMax(0.5);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_density = nAttr.create(m_densityName[0], m_densityName[1], MFnNumericData::kDouble,1000, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0.01);
+	nAttr.setSoftMin(500);
+	nAttr.setSoftMax(5000);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_stepTime = nAttr.create(m_stepTimeName[0], m_stepTimeName[1], MFnNumericData::kDouble,1/24.0, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0.001);
+	nAttr.setSoftMin(0.01);
+	nAttr.setSoftMax(1);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
 	m_mesh = tAttr.create(m_meshName[0], m_meshName[1], MFnData::kMesh, &s);
 	tAttr.setStorable(false);
 	tAttr.setHidden(false);
@@ -132,6 +207,18 @@ MStatus RigSimulationNode::initialize()
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_transformMatrix);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_tetEdgeRatio);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_tetMaxVolume);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_youngModulus);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_nu);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_density);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_stepTime);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	s = attributeAffects(m_initParam, m_param);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
@@ -139,6 +226,26 @@ MStatus RigSimulationNode::initialize()
 	return s;
 }
 
+MStatus RigSimulationNode::setParamToInit()
+{
+	MStatus s;
+	MPlug paramArrayPlug = Global::getPlug(this, m_paramName[0]);
+	MPlug inParamArrayPlug= Global::getPlug(this, m_initParamName[0]);
+	for (int phyIdx = 0; phyIdx < paramArrayPlug.numElements(&s); ++phyIdx)
+	{
+		MPlug paramPlug = paramArrayPlug.elementByPhysicalIndex(phyIdx,&s);
+		CHECK_MSTATUS_AND_RETURN_IT(s);
+
+		int logIdx = paramPlug.logicalIndex();
+		MPlug inParamPlug = inParamArrayPlug.elementByLogicalIndex(logIdx, &s);
+		CHECK_MSTATUS_AND_RETURN_IT(s);
+
+		double val = 0;
+		inParamPlug.getValue(val);
+		paramPlug.setValue(val);
+	}
+	return s;
+}
 MStatus RigSimulationNode::compute( const MPlug& plug, MDataBlock& data )
 {
 	MStatus s;
@@ -150,11 +257,17 @@ MStatus RigSimulationNode::compute( const MPlug& plug, MDataBlock& data )
 		bool res = m_recorder.getStatus(curFrame, status);
 		if (!res)
 			res = getInitStatus(status);
-		if (!res)
-			return MStatus::kFailure;
-
-		const EigVec& p = status.getParam();
-		setParamPlug(&p[0], p.size());		
+		if (res)
+		{	// 已经初始化，但是当前帧不在模拟数据范围内
+			const EigVec& p = status.getParam();
+			setParamPlug(&p[0], p.size());	 
+		}
+		else
+		{
+			// 没有初始化，把输出参数直接设置为与initParam一样
+			setParamToInit();
+		}
+	
 	}
 	return s;
 }
@@ -209,10 +322,10 @@ void RigSimulationNode::clearRig()
 {
 	delete m_rig;
 	m_rig = NULL;
-	delete m_rigMesh;
-	m_rigMesh = NULL;
 	delete m_solver;
 	m_solver = NULL;
+	delete m_rigMesh;
+	m_rigMesh = NULL;
 	m_recorder.clear();
 }
 
@@ -240,13 +353,25 @@ bool RigSimulationNode::resetRig()
 	m_rig->fetchParamFromNode();
 
 	// 初始化RiggedMesh对象
+	MPlug tetEdgeRatioPlug = Global::getPlug(this, m_tetEdgeRatioName[0]);
+	MPlug tetMaxVolumePlug = Global::getPlug(this, m_tetMaxVolumeName[0]);
+	MPlug youngModulusPlug = Global::getPlug(this, m_youngModulusName[0]);
+	MPlug nuPlug = Global::getPlug(this, m_nuName[0]);
+	MPlug densityPlug = Global::getPlug(this, m_densityName[0]);
+	MPlug stepTimePlug = Global::getPlug(this, m_stepTimeName[0]);
 	tetgenio tetMesh;
 	MMatrix mat = getMatrix();
 	bool res = MS::kSuccess == Global::maya2TetgenMesh(meshObj, tetMesh, mat);
 	if (res)
 	{
 		m_rigMesh = new RigFEM::RiggedMesh();
-		res = m_rigMesh->init(tetMesh, m_rig);
+		res = m_rigMesh->init(	tetMesh, m_rig, 
+								tetMaxVolumePlug.asDouble(), 
+								tetEdgeRatioPlug.asDouble(), 
+								youngModulusPlug.asDouble(), 
+								nuPlug.asDouble(), 
+								densityPlug.asDouble());
+		m_rigMesh->setStepTime(stepTimePlug.asDouble());
 	}
 
 	if (!res)
@@ -282,16 +407,24 @@ bool RigSimulationNode::stepRig()
 
 	// 设置上一帧状态
 	RigStatus s;
-	if (!m_recorder.getStatus(curFrame-1, s))
+	bool res = m_recorder.getStatus(curFrame-1, s);
+	if (!res)
+		res = getInitStatus(s);
+	if (res)
 	{
-		getInitStatus(s);
+		if (!m_rigMesh->setStatus(s))
+		{
+			PRINT_F("status invalid");
+			return false;
+		}
 	}
-	if (!m_rigMesh->setStatus(s))
-		return false;
 	
 	// 模拟
 	if(!m_solver->step())
+	{
+		PRINT_F("simulation failed.");
 		return false;
+	}
 
 	// 记录结果
 	s = m_rigMesh->getStatus();
@@ -313,7 +446,7 @@ bool RigSimulationNode::getInitStatus( RigStatus& status )
 	{
 		MPlug paramPlug = paramArrayPlug.elementByLogicalIndex(ithParam,&s);
 		if (!s)
-			break;
+			return false;
 		paramPlug.getValue(param[ithParam]);
 	}
 
@@ -330,6 +463,9 @@ int RigSimulationNode::getCurFrame()
 	int curFrame = 1;
 	MGlobal::executeCommand("currentTime -q", curFrame);
 	return curFrame;
+// 	return 1;
+// 	MTime t = MAnimControl::currentTime();
+// 	return t.value();
 }
 
 MStatus RigSimulationNode::setParamPlug( const double* param, int nParam )

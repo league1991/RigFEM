@@ -14,7 +14,7 @@ public:
  
 	void init();
 	// 用表面网格和rig对象初始化，rig由外部负责释放
-	bool init(tetgenio& surfMesh, RigBase* rig, double maxVolume = 1, double edgeRatio = 2);
+	bool init( tetgenio& surfMesh, RigBase* rig, double maxVolume = 1, double edgeRatio = 2 , double youngModulus = 1e6, double nu = 0.45, double density = 1000);
 	void clear();
 	void show();
 	bool showStatus(RigStatus& s);
@@ -34,6 +34,8 @@ public:
 	// 更新各个自由度的状态，同时更新的有顶点位置、速度、加速度
 	void setDof(EigVec&n, EigVec&p, bool proceedTime = true);
 	double getCurTime(){return m_t;}
+
+	void setStepTime(double dt){m_h = dt;}
 
 	// 返回封装的状态
 	RigStatus getStatus()const;
@@ -62,8 +64,7 @@ private:
 	};
 
 	bool findOriPoints(tetgenio& in, tetgenio& out);
-	bool buildVegaData();
-
+	bool buildVegaData(double E = 1e6, double nu = 0.45, double density = 1000);
 	// 由内部点偏移n和参数p更新所有点的偏移q
 	bool computeQ(const double* n, const double* p, double t, double* q);
 	// 只更新被参数p影响的点的位置

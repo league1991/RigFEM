@@ -1,0 +1,95 @@
+//
+//  Procedure Name:
+//	AEmatlab
+//
+//  Input Value:
+//	nodeName 
+//
+//  Output Value:
+//	None
+// 
+global proc initSimulator(string $nodeName)
+{	
+	// execute
+	rigSimulate -init -name $nodeName;
+}
+global proc execSimulator(string $nodeName)
+{	
+	int  $length = `intSliderGrp   -query -value simLengthSlider`;
+	
+	// init progress bar
+	global string $gMainProgressBar;
+    progressBar -edit
+        -beginProgress
+        -isInterruptable true
+        -status "Simulating... "
+        -maxValue $length
+        $gMainProgressBar;
+		
+	int  $begTime = `currentTime -q`;
+	int  $t;
+	for ($t = $begTime; $t < $begTime + $length; $t++)
+	{	
+		// step progress bar
+        if(`progressBar -query -isCancelled $gMainProgressBar`)
+            break;
+        progressBar -edit -step 1 $gMainProgressBar;
+			
+		currentTime $t;
+		int $res = `rigSimulate -step -name $nodeName`;
+		if($res == 0)
+			break;
+	}
+	
+	// delete progress bar
+    progressBar -edit  -endProgress $gMainProgressBar;
+}
+global proc initSimulatorControl(string $attrName)
+{
+	string $nodeName = `match "[^\.]*" $attrName`;	
+	setUITemplate -pst "attributeEditorTemplate";
+		button -label "Initialize" -c ("initSimulator " + $nodeName) initButton;
+		
+		intSliderGrp 	-label "Simulation Length" -field true
+						-minValue 1 -maxValue 100
+						-fieldMinValue  1 -fieldMaxValue  10000
+						-value 10
+						simLengthSlider;
+		button -label "Simulate" -c ("execSimulator " + $nodeName) simButton;
+	setUITemplate -ppt;
+}
+
+global proc modifySimulatorControl(string $attrName)
+{
+	string $nodeName = `match "[^\.]*" $attrName`;	
+	button -e -c ("initSimulator " + $nodeName) initButton;	
+	button -e -c ("execSimulator " + $nodeName) simButton;
+}
+
+global proc AErigSimulatorTemplate(string $nodeName)
+{
+	editorTemplate -beginScrollLayout;
+		editorTemplate -beginLayout "Simulation" -collapse false;
+			editorTemplate -addControl "tetEdgeRatio";
+			editorTemplate -addControl "tetMaxVolume";
+			editorTemplate -addSeparator;
+			editorTemplate -addControl "youngModulus";
+			editorTemplate -addControl "nu";
+			editorTemplate -addControl "density";
+			editorTemplate -addControl "stepTime";
+			editorTemplate -callCustom "initSimulatorControl" "modifySimulatorControl" "noAttr";	
+		editorTemplate -endLayout;
+		
+		editorTemplate -beginLayout "Rig Parameter" -collapse true;
+			editorTemplate -addControl "rigInitParameter";
+		editorTemplate -endLayout;
+		
+		editorTemplate -beginLayout (uiRes("m_AElocatorTemplate.kLocatorAttributes")) -collapse 0;
+			AElocatorCommon $nodeName;
+		editorTemplate -endLayout;
+
+		AEgeometryShapeTemplate $nodeName;
+
+		editorTemplate -addExtraControls;	
+	editorTemplate -endScrollLayout;
+}

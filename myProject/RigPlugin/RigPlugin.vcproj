@@ -63,7 +63,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/subsystem:windows /machine:I386 /export:initializePlugin /export:uninitializePlugin"
-				AdditionalDependencies="Foundation.lib OpenMaya.lib OpenMayaUI.lib OpenGL32.lib QtGui4.lib QtCore4.lib QtNetwork4.lib tet.lib arpack.lib forceModel.lib miniVector.lib polarDecomposition.lib pthreadVC2.lib getopts.lib configFile.lib graph.lib lighting.lib corotationalLinearFEM.lib elasticForceModel.lib isotropicHyperElasticFEM.lib sceneobject.lib camera.lib openGLHelper.lib matrix.lib massSpringSystem.lib imageIO.lib sparseMatrix.lib sparseSolver.lib loadList.lib insertRows.lib integrator.lib integratorSparse.lib modalMatrix.lib reducedStvk.lib stvk.lib renderVolumetricMesh.lib matrixIO.lib objMesh.lib volumetricMesh.lib mkl_blas95.lib mkl_blacs_dll.lib mkl_core.lib mkl_blacs_intelmpi.lib mkl_blacs_mpich2.lib mkl_intel_c.lib mkl_sequential.lib mkl_solver.lib expokit.lib superLUd.lib"
+				AdditionalDependencies="Foundation.lib OpenMaya.lib OpenMayaUI.lib OpenMayaAnim.lib OpenGL32.lib QtGui4.lib QtCore4.lib QtNetwork4.lib tet.lib arpack.lib forceModel.lib miniVector.lib polarDecomposition.lib pthreadVC2.lib getopts.lib configFile.lib graph.lib lighting.lib corotationalLinearFEM.lib elasticForceModel.lib isotropicHyperElasticFEM.lib sceneobject.lib camera.lib openGLHelper.lib matrix.lib massSpringSystem.lib imageIO.lib sparseMatrix.lib sparseSolver.lib loadList.lib insertRows.lib integrator.lib integratorSparse.lib modalMatrix.lib reducedStvk.lib stvk.lib renderVolumetricMesh.lib matrixIO.lib objMesh.lib volumetricMesh.lib mkl_blas95.lib mkl_blacs_dll.lib mkl_core.lib mkl_blacs_intelmpi.lib mkl_blacs_mpich2.lib mkl_intel_c.lib mkl_sequential.lib mkl_solver.lib expokit.lib superLUd.lib"
 				OutputFile="$(OutDir)\$(ProjectName).mll"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(MAYADIR)\lib&quot;;..\..\utilities\tetgen\debug;..\..\debug;&quot;..\..\libraries\glui\glui-2.35\src\msvc\lib&quot;;&quot;$(PTHREADDIR)\lib\x86&quot;;..\..\libraries\superLU\lib"
@@ -92,7 +92,7 @@
 			<Tool
 				Name="VCPostBuildEventTool"
 				Description="复制文件"
-				CommandLine="copy ..\Debug\RigPlugin.mll  ..\DLL\RigPlugin.mll"
+				CommandLine="copy ..\Debug\RigPlugin.mll  ..\DLL\RigPlugin.mll &#x0D;&#x0A;copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;"
 			/>
 		</Configuration>
 		<Configuration
@@ -143,7 +143,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="/subsystem:windows /machine:I386 /export:initializePlugin /export:uninitializePlugin"
-				AdditionalDependencies="Foundation.lib OpenMaya.lib OpenMayaUI.lib OpenGL32.lib QtGui4.lib QtCore4.lib QtNetwork4.lib tet.lib arpack.lib forceModel.lib miniVector.lib polarDecomposition.lib pthreadVC2.lib getopts.lib configFile.lib graph.lib lighting.lib corotationalLinearFEM.lib elasticForceModel.lib isotropicHyperElasticFEM.lib sceneobject.lib camera.lib openGLHelper.lib matrix.lib massSpringSystem.lib imageIO.lib sparseMatrix.lib sparseSolver.lib loadList.lib insertRows.lib integrator.lib integratorSparse.lib modalMatrix.lib reducedStvk.lib stvk.lib renderVolumetricMesh.lib matrixIO.lib objMesh.lib volumetricMesh.lib mkl_blas95.lib mkl_blacs_dll.lib mkl_core.lib mkl_blacs_intelmpi.lib mkl_blacs_mpich2.lib mkl_intel_c.lib mkl_sequential.lib mkl_solver.lib expokit.lib superLU.lib"
+				AdditionalDependencies="Foundation.lib OpenMaya.lib OpenMayaAnim.lib OpenMayaUI.lib OpenGL32.lib QtGui4.lib QtCore4.lib QtNetwork4.lib tet.lib arpack.lib forceModel.lib miniVector.lib polarDecomposition.lib pthreadVC2.lib getopts.lib configFile.lib graph.lib lighting.lib corotationalLinearFEM.lib elasticForceModel.lib isotropicHyperElasticFEM.lib sceneobject.lib camera.lib openGLHelper.lib matrix.lib massSpringSystem.lib imageIO.lib sparseMatrix.lib sparseSolver.lib loadList.lib insertRows.lib integrator.lib integratorSparse.lib modalMatrix.lib reducedStvk.lib stvk.lib renderVolumetricMesh.lib matrixIO.lib objMesh.lib volumetricMesh.lib mkl_blas95.lib mkl_blacs_dll.lib mkl_core.lib mkl_blacs_intelmpi.lib mkl_blacs_mpich2.lib mkl_intel_c.lib mkl_sequential.lib mkl_solver.lib expokit.lib superLU.lib"
 				OutputFile="$(OutDir)\$(ProjectName).mll"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(MAYADIR)\lib&quot;;..\..\utilities\tetgen\Release;..\..\Release;&quot;..\..\libraries\glui\glui-2.35\src\msvc\lib&quot;;&quot;$(PTHREADDIR)\lib\x86&quot;;..\..\libraries\superLU\lib"
@@ -174,7 +174,7 @@
 			<Tool
 				Name="VCPostBuildEventTool"
 				Description="复制文件"
-				CommandLine="copy ..\Release\RigPlugin.mll  ..\DLL\RigPlugin.mll"
+				CommandLine="copy ..\Release\RigPlugin.mll  ..\DLL\RigPlugin.mll &#x0D;&#x0A;copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;"
 			/>
 		</Configuration>
 	</Configurations>

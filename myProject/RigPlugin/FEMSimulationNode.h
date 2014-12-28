@@ -23,6 +23,7 @@ public:
 	static const char*	paramLongName(){return m_paramName[0];}
 	static const char*	meshLongName(){return m_meshName[0];}
 	static const char*  transformLongName(){return m_transformMatrixName[0];}
+	static const char*  initParamLongName(){return m_initParamName[0];}
 
 	// 模拟相关函数
 	void				clearRig();
@@ -38,19 +39,30 @@ private:
 	MMatrix				getMatrix();
 	bool				getInitStatus(RigFEM::RigStatus& s);
 	int					getCurFrame();
-
+	MStatus				setParamToInit();		// 设置参数为初始参数
 	MBoundingBox		m_box;
 
 	static MObject		m_initParam;
 	static MObject		m_param;
 	static MObject		m_mesh;
 	static MObject      m_transformMatrix;		// mesh transform matrix
+	static MObject		m_tetEdgeRatio;			// 体网格化参数，四面体边比例
+	static MObject		m_tetMaxVolume;			// 体网格化参数，四面体最大体积
+	static MObject		m_youngModulus;			// 杨氏模量
+	static MObject		m_nu;					// 控制不同轴向变形相互影响的参数
+	static MObject		m_density;				// 密度
+	static MObject		m_stepTime;				// 时间步长
 
 	static const char*  m_initParamName[2];
 	static const char*  m_paramName[2];
 	static const char*  m_meshName[2];
 	static const char*  m_transformMatrixName[2];
-
+	static const char*	m_tetEdgeRatioName[2];			// 体网格化参数，四面体边比例
+	static const char*	m_tetMaxVolumeName[2];			// 体网格化参数，四面体最大体积
+	static const char*	m_youngModulusName[2];			// 杨氏模量
+	static const char*	m_nuName[2];					// 控制不同轴向变形影响程度的参数
+	static const char*	m_densityName[2];				// 密度
+	static const char*	m_stepTimeName[2];				// 时间步长
 				
 	RigFEM::GeneralRig*	m_rig;					// 封装了节点求值机制	
 	RigFEM::RiggedMesh*	m_rigMesh;				// fem 数据

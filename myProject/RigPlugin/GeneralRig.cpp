@@ -65,7 +65,7 @@ bool RigFEM::GeneralRig::computeValue( double* result, const double* params /*= 
 MStatus RigFEM::GeneralRig::fetchParamFromNode()
 {
 	MStatus s;
-	MPlug paramArrayPlug = Global::getPlug(m_node, RigSimulationNode::paramLongName());
+	MPlug paramArrayPlug = Global::getPlug(m_node, RigSimulationNode::initParamLongName());
 	for (int ithParam = 0; ithParam < m_nParam; ++ithParam)
 	{
 		MPlug paramPlug = paramArrayPlug.elementByLogicalIndex(ithParam,&s);

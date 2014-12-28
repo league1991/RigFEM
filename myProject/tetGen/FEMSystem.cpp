@@ -239,7 +239,7 @@ bool RiggedMesh::PntPair::operator<( const PntPair& other ) const
 	return m_pnt[2] < other.m_pnt[2];
 }
 
-bool RigFEM::RiggedMesh::buildVegaData()
+bool RiggedMesh::buildVegaData(double E, double nu, double density)
 {
 	if (!m_out.numberofpoints || !m_out.numberoftetrahedra || !m_out.numberofcorners)
 		return false;
@@ -260,7 +260,7 @@ bool RigFEM::RiggedMesh::buildVegaData()
 	}
  
 	int nPnts = m_out.numberofpoints;
-	m_tetMesh = new TetMesh(nPnts, m_out.pointlist, numTet, tetIDs, 20000, 0.4);
+	m_tetMesh = new TetMesh(nPnts, m_out.pointlist, numTet, tetIDs, E, nu, density);
 	delete[] tetIDs;
 
 
@@ -282,7 +282,7 @@ bool RigFEM::RiggedMesh::buildVegaData()
 	return true;
 }
 
-void RigFEM::RiggedMesh::computeRig()
+void RiggedMesh::computeRig()
 {
 	EigVec res(m_nSurfPnt * 3);
 	computeSurfOffset(&m_param[0], m_t, res);
@@ -332,7 +332,7 @@ void RigFEM::RiggedMesh::computeRig()
 	}*/
 }
 
-bool RigFEM::RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigSparse& Hnn, EigDense& Hnp, EigDense& Hpn, EigDense* pHpp)
+bool RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigSparse& Hnn, EigDense& Hnp, EigDense& Hpn, EigDense* pHpp)
 { 
 	bool res = true;
 	// 计算指定参数下各个点的偏移量q
@@ -436,7 +436,7 @@ bool RigFEM::RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double
 	return res;
 }
 
-void RigFEM::RiggedMesh::testStep( double dt )
+void RiggedMesh::testStep( double dt )
 {
 	int nDeg = m_nTotPnt*3;
 	if (m_q.size() != nDeg || m_force.size() != nDeg)
@@ -469,7 +469,7 @@ void RigFEM::RiggedMesh::testStep( double dt )
 	}
 }
 
-bool RigFEM::RiggedMesh::computeQ( const double* n, const double* p, double t, double* q )
+bool RiggedMesh::computeQ( const double* n, const double* p, double t, double* q )
 {
 	EigVec s;
 	bool res = computeSurfOffset(p, t, s);
@@ -492,7 +492,7 @@ bool RigFEM::RiggedMesh::computeQ( const double* n, const double* p, double t, d
 	return true;
 }
 
-bool RigFEM::RiggedMesh::computeQ( const double* p, double t, double* q )
+bool RiggedMesh::computeQ( const double* p, double t, double* q )
 {
 	EigVec s;
 	bool res = computeSurfOffset(p, t, s);
@@ -508,7 +508,7 @@ bool RigFEM::RiggedMesh::computeQ( const double* p, double t, double* q )
 	return true;
 }
 
-bool RigFEM::RiggedMesh::computeSurfOffset( const double* p, double t, EigVec& s )
+bool RiggedMesh::computeSurfOffset( const double* p, double t, EigVec& s )
 {
 	s = EigVec(m_nSurfPnt*3);
 	m_transRig->setTime(t);
@@ -525,7 +525,7 @@ bool RigFEM::RiggedMesh::computeSurfOffset( const double* p, double t, EigVec& s
 	return true;
 }
 
-bool RigFEM::RiggedMesh::computeGradient( const EigVec& n, const EigVec& p, double t, EigVec& gn, EigVec& gs )
+bool RiggedMesh::computeGradient( const EigVec& n, const EigVec& p, double t, EigVec& gn, EigVec& gs )
 {
 	// 计算给定参数下状态
 	EigVec q(m_nTotPnt*3);
@@ -568,7 +568,7 @@ bool RigFEM::RiggedMesh::computeGradient( const EigVec& n, const EigVec& p, doub
 	return res;
 }
 
-bool RigFEM::RiggedMesh::testHessian()
+bool RiggedMesh::testHessian()
 {
 	// 扰动上一帧状态
 	double lastT = 0;
@@ -640,7 +640,7 @@ bool RigFEM::RiggedMesh::testHessian()
 
 
 
-bool RigFEM::RiggedMesh::testElasticEnergy()
+bool RiggedMesh::testElasticEnergy()
 {
 	int nDof = m_nTotPnt * 3;
 
@@ -686,7 +686,7 @@ bool RigFEM::RiggedMesh::testElasticEnergy()
 	return true;
 }
 
-double RigFEM::RiggedMesh::computeValue( const EigVec& n, const EigVec& p, double t)
+double RiggedMesh::computeValue( const EigVec& n, const EigVec& p, double t)
 {
 
 	// 计算给定参数下状态
@@ -696,7 +696,7 @@ double RigFEM::RiggedMesh::computeValue( const EigVec& n, const EigVec& p, doubl
 	return computeValue(q);
 }
 
-double RigFEM::RiggedMesh::computeValue( const EigVec& q )
+double RiggedMesh::computeValue( const EigVec& q )
 {
 	// 计算动能增量
 	double kinetic = 0;
@@ -714,7 +714,7 @@ double RigFEM::RiggedMesh::computeValue( const EigVec& q )
 	return elasticEnergy + kinetic;
 }
 
-bool RigFEM::RiggedMesh::testValue()
+bool RiggedMesh::testValue()
 {
 	// 扰动上一帧状态
 	double lastT = 0;
@@ -768,7 +768,7 @@ bool RigFEM::RiggedMesh::testValue()
 	return true;
 }
 
-bool RigFEM::RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& param,  double* v, EigVec* grad)
+bool RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& param,  double* v, EigVec* grad)
 {
 	if (!v && !grad)
 		return false;
@@ -847,7 +847,7 @@ bool RigFEM::RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& para
 	return res;
 }
 
-void RigFEM::RiggedMesh::setDof( EigVec&n, EigVec&p, bool proceedTime /*= true*/ )
+void RiggedMesh::setDof( EigVec&n, EigVec&p, bool proceedTime /*= true*/ )
 {
 	EigVec q(m_nTotPnt*3);
 	computeQ(&n[0], &p[0], m_t, &q[0]);
@@ -863,7 +863,7 @@ void RigFEM::RiggedMesh::setDof( EigVec&n, EigVec&p, bool proceedTime /*= true*/
 	}
 }
 
-void RigFEM::RiggedMesh::getDof( EigVec& n, EigVec& p )
+void RiggedMesh::getDof( EigVec& n, EigVec& p )
 {
 	p = m_param;
 	n.resize(m_nIntPnt*3);
@@ -877,7 +877,7 @@ void RigFEM::RiggedMesh::getDof( EigVec& n, EigVec& p )
 }
 
 
-bool RigFEM::RiggedMesh::init( tetgenio& surfMesh, RigBase* rig, double maxVolume /*= 1*/, double edgeRatio /*= 2*/ )
+bool RiggedMesh::init( tetgenio& surfMesh, RigBase* rig, double maxVolume /*= 1*/, double edgeRatio /*= 2*/ , double youngModulus, double nu, double density)
 {
 	if (surfMesh.numberofpoints <= 0 || surfMesh.numberoffacets <= 0 ||
 		!surfMesh.pointlist || !surfMesh.facetlist ||
@@ -886,6 +886,27 @@ bool RigFEM::RiggedMesh::init( tetgenio& surfMesh, RigBase* rig, double maxVolum
 		return false;
 	}
 	clear();
+
+	// 估计四面体个数，拒绝个数太多的参数
+	double minPnt[3] = {DBL_MAX, DBL_MAX, DBL_MAX}, maxPnt[3] = {-DBL_MAX, -DBL_MAX, -DBL_MAX};
+	for (double* p = surfMesh.pointlist; 
+		 p < surfMesh.pointlist + surfMesh.numberofpoints*3; p+=3)
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			minPnt[i] = p[i] < minPnt[i] ? p[i] : minPnt[i];
+			maxPnt[i] = p[i] > maxPnt[i] ? p[i] : maxPnt[i];
+		}
+	}
+	double bboxVol =	(maxPnt[0] - minPnt[0]) *
+						(maxPnt[1] - minPnt[1]) * 
+						(maxPnt[2] - minPnt[2]);
+	double approxTetNum = bboxVol / maxVolume;
+	if (approxTetNum > 50000)
+	{
+		maxVolume = bboxVol / 50000;
+		PRINT_F("max Volume is too small, set to %lf", maxVolume);
+	}
 
 	char cmd[100];
 	sprintf(cmd, "pq%lfa%lf", edgeRatio, maxVolume);
@@ -902,7 +923,7 @@ bool RigFEM::RiggedMesh::init( tetgenio& surfMesh, RigBase* rig, double maxVolum
 	}
 
 	// 构建四面体网格,为模拟的位置、速度、加速度等参数分配空间
-	res &= buildVegaData();
+	res &= buildVegaData(youngModulus, nu, density);
 
 	if (!res)
 	{
@@ -920,7 +941,7 @@ bool RigFEM::RiggedMesh::init( tetgenio& surfMesh, RigBase* rig, double maxVolum
 	return true;
 }
 
-void RigFEM::RiggedMesh::clear()
+void RiggedMesh::clear()
 {
 	m_transRig = NULL;
 
@@ -933,14 +954,14 @@ void RigFEM::RiggedMesh::clear()
 	m_nSurfPnt = 0;
 	m_nParam = 0;
 
-	delete m_tetMesh;
-	m_tetMesh = NULL;
+	delete m_forceModel;
+	m_forceModel = NULL;
 
 	delete m_modelwrapper;
 	m_modelwrapper = NULL;
 
-	delete m_forceModel;
-	m_forceModel = NULL;
+	delete m_tetMesh;
+	m_tetMesh = NULL;
 
 	m_q = m_v = m_a = m_force = m_param = EigVec();
 	delete m_tangentStiffnessMatrix;
@@ -951,12 +972,12 @@ void RigFEM::RiggedMesh::clear()
 
 }
 
-RigFEM::RigStatus RigFEM::RiggedMesh::getStatus() const
+RigStatus RiggedMesh::getStatus() const
 {
 	return RigStatus(m_q, m_v, m_a, m_param);
 }
 
-bool RigFEM::RiggedMesh::setStatus( const RigStatus& s )
+bool RiggedMesh::setStatus( const RigStatus& s )
 {
 	int pntLength = s.getPointVecLength();
 	int paramLength = s.getParamVecLength();
@@ -976,7 +997,7 @@ bool RigFEM::RiggedMesh::setStatus( const RigStatus& s )
 	return false;
 }
 
-bool RigFEM::RiggedMesh::showStatus( RigStatus& s )
+bool RiggedMesh::showStatus( RigStatus& s )
 {
 	if (!s.matchLength(m_nTotPnt*3, m_nParam))
 		return false;
@@ -1037,17 +1058,17 @@ bool RigFEM::RiggedMesh::showStatus( RigStatus& s )
 
 
 
-void RigFEM::FEMSystem::clearResult()
+void FEMSystem::clearResult()
 {
 	m_solver.clearResult();
 }
 
-void RigFEM::FEMSystem::saveResult( const char* fileName )
+void FEMSystem::saveResult( const char* fileName )
 {
 	m_solver.saveResult(fileName);
 }
 
-void RigFEM::FEMSystem::step()
+void FEMSystem::step()
 {
 	m_solver.step();
 }

@@ -20,6 +20,7 @@ MStatus RigSimulateCmd::doIt( const MArgList& args )
 	MSelectionList selection;
 	MSyntax syn = syntax();
 	MArgDatabase argData(syn, args);
+	setResult(0);
 	if (argData.isFlagSet(m_nameFlag[1], &s))
 	{
 		MString nodeName;											// 提取某个名字的节点
@@ -28,10 +29,10 @@ MStatus RigSimulateCmd::doIt( const MArgList& args )
 	}
 	else
 		s = MGlobal::getActiveSelectionList(selection);				// 提取选中节点
-	CHECK_MSTATUS_AND_RETURN_IT(s);
+	if (!s)return MS::kSuccess;
 
 	bool isInitFlagSet = argData.isFlagSet(m_initFlag[1], &s);
-	bool isStepFlagSet = argData.isFlagSet(m_stepFlag[1], &s);
+	bool isStepFlagSet = argData.isFlagSet(m_stepFlag[1], &s); 
 
 	MItSelectionList pSel(selection, MFn::kDependencyNode , &s);
 	MObject obj;
@@ -46,7 +47,8 @@ MStatus RigSimulateCmd::doIt( const MArgList& args )
 		if (typeName == NODE_FEM_SIMULATION_NAME)
 		{
 			RigSimulationNode* node = (RigSimulationNode*)nodeFn.userNode(&s);
-			CHECK_MSTATUS_AND_RETURN_IT(s);
+			if (!s)
+				return MS::kSuccess;
 
 			bool res = true;
 			MString name = nodeFn.name(&s);
@@ -68,10 +70,12 @@ MStatus RigSimulateCmd::doIt( const MArgList& args )
 			{
 				MString info = "rigSimulate command failed in " + name;
 				MGlobal::displayError(info);
+				return MS::kSuccess;
 			}
 		}
 	}
-	return s;
+	setResult(1);
+	return MS::kSuccess;
 }
 
 void* RigSimulateCmd::creator()

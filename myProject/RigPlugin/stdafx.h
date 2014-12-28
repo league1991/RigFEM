@@ -36,6 +36,7 @@
 #include <maya/MArgDatabase.h>
 #include <maya/MMatrix.h>
 #include <maya/MArgList.h>
+#include <maya/MAnimControl.h>
 
 #include <maya/MFnNurbsSurfaceData.h>
 #include <maya/MFnNurbsSurface.h>

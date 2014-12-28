@@ -206,6 +206,8 @@ bool RigFEM::NewtonSolver::step()
 		double   f;
 		Utilities::mergeVec(n,p,x);							// x = [n p]
 		isSucceed &= m_fem->computeValueAndGrad(x, tVec, &f, &G);
+		if (!isSucceed)
+			return false;
 		Eigen::Map<EigVec> Gn(&G[0], nIntDof);				// G = [Gn Gp]
 		Eigen::Map<EigVec> Gp(&G[0]+nIntDof, nParam);
 
