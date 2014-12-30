@@ -33,13 +33,15 @@ public:
 
 	// 用于测试
 	void				testRig();
+
 private:
-	// 获取当前有效的参数个数
-	int					getNumParam();
+	
+	int					getNumParam();			// 获取当前有效的参数个数
 	MMatrix				getMatrix();
 	bool				getInitStatus(RigFEM::RigStatus& s);
 	int					getCurFrame();
 	MStatus				setParamToInit();		// 设置参数为初始参数
+	void				drawIcon();
 	MBoundingBox		m_box;
 
 	static MObject		m_initParam;
@@ -51,7 +53,8 @@ private:
 	static MObject		m_youngModulus;			// 杨氏模量
 	static MObject		m_nu;					// 控制不同轴向变形相互影响的参数
 	static MObject		m_density;				// 密度
-	static MObject		m_stepTime;				// 时间步长
+	static MObject		m_timeStep;				// 时间步长
+	static MObject		m_deriStep;				// 参数求导时的有限差商大小
 
 	static const char*  m_initParamName[2];
 	static const char*  m_paramName[2];
@@ -62,7 +65,8 @@ private:
 	static const char*	m_youngModulusName[2];			// 杨氏模量
 	static const char*	m_nuName[2];					// 控制不同轴向变形影响程度的参数
 	static const char*	m_densityName[2];				// 密度
-	static const char*	m_stepTimeName[2];				// 时间步长
+	static const char*	m_timeStepName[2];				// 时间步长
+	static const char*  m_deriStepName[2];					// 参数求导时的有限差商大小
 				
 	RigFEM::GeneralRig*	m_rig;					// 封装了节点求值机制	
 	RigFEM::RiggedMesh*	m_rigMesh;				// fem 数据

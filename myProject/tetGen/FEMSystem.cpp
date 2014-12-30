@@ -997,7 +997,7 @@ bool RiggedMesh::setStatus( const RigStatus& s )
 	return false;
 }
 
-bool RiggedMesh::showStatus( RigStatus& s )
+bool RiggedMesh::showStatus( RigStatus& s , double* bbox)
 {
 	if (!s.matchLength(m_nTotPnt*3, m_nParam))
 		return false;
@@ -1018,6 +1018,11 @@ bool RiggedMesh::showStatus( RigStatus& s )
 		glVertex3d(v[0], v[1], v[2]);
 	}
 
+	if (bbox)
+	{
+		bbox[0] = bbox[1] = bbox[2] = DBL_MAX;
+		bbox[3] = bbox[4] = bbox[5] = -DBL_MAX;
+	}
 	glColor3f(0,1,0);
 	for (int i = 0; i < m_surfPntIdx.size(); ++i)
 	{
@@ -1026,6 +1031,14 @@ bool RiggedMesh::showStatus( RigStatus& s )
 		Vec3d dV(q[idx*3], q[idx*3+1], q[idx*3+2]);
 		v += dV;
 		glVertex3d(v[0], v[1], v[2]);
+		if (bbox)
+		{
+			for (int j = 0; j < 3; ++j)
+			{
+				bbox[j] = min(bbox[j], v[j]);
+				bbox[j+3]=max(bbox[j], v[j]);
+			}
+		}
 	}
 	glEnd();
 

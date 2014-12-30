@@ -17,7 +17,7 @@ public:
 	bool init( tetgenio& surfMesh, RigBase* rig, double maxVolume = 1, double edgeRatio = 2 , double youngModulus = 1e6, double nu = 0.45, double density = 1000);
 	void clear();
 	void show();
-	bool showStatus(RigStatus& s);
+	bool showStatus( RigStatus& s , double* bbox = NULL);
 	void computeRig();
 
 	// 计算给定状态x = [n，p] 以及时间参数param下的函数值，以及梯度

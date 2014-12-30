@@ -72,6 +72,7 @@ global proc AErigSimulatorTemplate(string $nodeName)
 		editorTemplate -beginLayout "Simulation" -collapse false;
 			editorTemplate -addControl "tetEdgeRatio";
 			editorTemplate -addControl "tetMaxVolume";
+			editorTemplate -addControl "meshTransform";
 			editorTemplate -addSeparator;
 			editorTemplate -addControl "youngModulus";
 			editorTemplate -addControl "nu";

@@ -187,6 +187,7 @@ RigFEM::LineSearch::LineSearch( ObjectFunction* objFun /*= NULL*/, double initSt
 
 bool RigFEM::NewtonSolver::step()
 {
+	PRINT_F("newton iteration begin.");
 	EigVec p,n;
 	m_fem->getDof(n,p);
 	double t = m_fem->getCurTime();

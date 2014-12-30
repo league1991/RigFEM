@@ -29,6 +29,9 @@ namespace RigFEM
 		void setTime(double t);
 		double		 getTime()const{return m_t;}
 
+		// 设置有限差商求导时的步长
+		void setDelta(double delta){m_delta = delta;}
+
 		// 以下是各个计算函数, 根据当前的参数和时间计算各种结果
 		// 计算当前参数下点的新坐标
 		virtual bool computeValue(double* result, const double* params = 0) = 0;
@@ -39,7 +42,7 @@ namespace RigFEM
 		// 有限差商计算当前参数下的 d2S / (dPi * dPj)  其中S为点向量，Pi、Pj为第i、j个参数
 		virtual bool computeJacobianDerivative(int i, int j, double* res);
 	protected:
-
+		double	m_delta;											// 有限差商求导时的微小位移
 		int     m_nParam;											// 参数个数
 		double  m_t;												// 当前时间
 		double* m_param;											// 参数向量

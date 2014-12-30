@@ -2,7 +2,7 @@
 #include "Rig.h"
 using namespace RigFEM;
 
-RigBase::RigBase(int nParam):m_t(0), m_keyFrameFunc(NULL), m_nParam(nParam)
+RigBase::RigBase(int nParam):m_t(0), m_keyFrameFunc(NULL), m_nParam(nParam), m_delta(1e-3)
 {
 	m_param = new double[nParam];
 	m_keyFrameFunc = new KeyFrameFunc[nParam];
@@ -141,7 +141,7 @@ RigFEM::TransformRig::TransformRig() :RigBase(9), m_translation(0.0), m_localCen
 
 bool RigFEM::RigBase::computeJacobianDerivative( int i, int j, double* res )
 {
-	double e = 1e-4;
+	double e = m_delta;
 
 	int nParam = getNFreeParam();
 	int nDoF   = getNPoints() * 3;
@@ -242,7 +242,7 @@ void RigFEM::RigBase::setTime( double t )
 
 bool RigFEM::RigBase::computeJacobian( Eigen::MatrixXd& jacobian )
 {
-	double e = 1e-4;
+	double e = m_delta;
 	double inv2E = 0.5 / e;
 
 	int nParam = getNFreeParam();
