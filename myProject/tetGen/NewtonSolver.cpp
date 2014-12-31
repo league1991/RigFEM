@@ -122,12 +122,16 @@ int RigFEM::LineSearch::lineSearch( const EigVec& x0, const EigVec& dx, const Ei
 
 	for (int i = 1; ai < amax; ++i)
 	{
+		PRINT_F("%dth line search iter, a = %lf", i-1,ai);
 		EigVec x = m_x0 + m_dx * ai;
 
 		// 只计算函数值，尽量提高效率
 		double fi;
 		double dfi;
+		int t0 = clock();
 		computeValueAndDeri(x, &fi, NULL);
+		int t1 = clock();
+		PRINT_F("line search compute value and deri #1: %f", (t1-t0)/1000.f);
 
 		// 若wolfe充分下降条件被违反或函数值较上次增长,终止迭代
 		if (fi > m_f0 + m_c1 * ai * m_df0 ||
@@ -138,6 +142,8 @@ int RigFEM::LineSearch::lineSearch( const EigVec& x0, const EigVec& dx, const Ei
 		}
 
 		computeValueAndDeri(x, NULL, &dfi);
+		int t2 = clock();
+		PRINT_F("line search compute value and deri #2: %f", (t2-t1)/1000.f);
 
 		// wolfe充分下降条件被满足，函数值较上次下降				
 		if (abs(dfi) <= m_c2 * abs(m_df0))
@@ -187,7 +193,7 @@ RigFEM::LineSearch::LineSearch( ObjectFunction* objFun /*= NULL*/, double initSt
 
 bool RigFEM::NewtonSolver::step()
 {
-	PRINT_F("newton iteration begin.");
+	PRINT_F("########### newton iteration begin. #############");
 	EigVec p,n;
 	m_fem->getDof(n,p);
 	double t = m_fem->getCurTime();
@@ -204,17 +210,24 @@ bool RigFEM::NewtonSolver::step()
 	for (int ithIter = 0; ithIter < maxIter; ++ithIter)
 	{
 		// 计算当前q p值的函数值、梯度值和Hessian
+		PRINT_F("%dth Iteration", ithIter);
+		int t0 = clock();
 		double   f;
 		Utilities::mergeVec(n,p,x);							// x = [n p]
 		isSucceed &= m_fem->computeValueAndGrad(x, tVec, &f, &G);
+		int t1 = clock();
+		PRINT_F("compute value and grad:%f", (t1-t0)/1000.f);
 		if (!isSucceed)
 			return false;
+
 		Eigen::Map<EigVec> Gn(&G[0], nIntDof);				// G = [Gn Gp]
 		Eigen::Map<EigVec> Gp(&G[0]+nIntDof, nParam);
 
 		// 计算Hessian
 		EigDense* pHpp = &Hpp;//ithIter == 0 ? &Hpp : NULL;
 		isSucceed &= m_fem->computeHessian(n,p, t, Hnn, Hnp, Hpn, pHpp);
+		int t2 = clock();
+		PRINT_F("compute hessian:%f",(t2-t1)/1000.f);
 		if (!isSucceed)
 			return false;
 
@@ -257,10 +270,12 @@ bool RigFEM::NewtonSolver::step()
 
 		EigDense A = Hpp - Hpn * invHnnHnp;
 		EigDense b = -Gp + Hpn * invHnnN;
-		dP= A.partialPivLu().solve(b);
+		dP= A.colPivHouseholderQr().solve(b);
 
 		EigVec   b2= -Gn - Hnp * dP;
 		dN= solver.solve(b2);
+		int t3 = clock();
+		PRINT_F("compute dN, dP:%f",(t3-t2)/1000.f);
 
 		// 进行一维搜索
 		Utilities::mergeVec(dN, dP, dx);
@@ -270,7 +285,7 @@ bool RigFEM::NewtonSolver::step()
 		int res = m_lineSearch.lineSearch(x,dx,tVec,a, &f, &df);
 		if (res == 0 && a > 1e-4)
 		{
-			PRINT_F("a = %lf\n", a);
+			PRINT_F("a = %lf", a);
 			if (a != 1.0)
 			{
 				dN *= a;
@@ -279,8 +294,10 @@ bool RigFEM::NewtonSolver::step()
 		}
 		else
 		{
-			PRINT_F("line search failed: a = %lf\n", a);
+			PRINT_F("line search failed: a = %lf", a);
 		}
+		int t4 = clock();
+		PRINT_F("line search:%f", (t4-t3)/1000.f);
 
 		// 计算残差
 		dGN = Hnn * dN + Hnp * dP;
@@ -294,7 +311,7 @@ bool RigFEM::NewtonSolver::step()
 		n += dN;
 		p += dP;
 
-		PRINT_F("|dN|=%le |dP|=%le |resiN|∞=%le |resiP|∞=%le\n", dN.norm(), dP.norm(), resiN.maxCoeff(), resiP.maxCoeff());
+		PRINT_F("|dN|=%le |dP|=%le |resiN|∞=%le |resiP|∞=%le", dN.norm(), dP.norm(), resiN.maxCoeff(), resiP.maxCoeff());
 
 		
 		if (resiN.maxCoeff() < 1e-5 && resiP.maxCoeff() < 1e-5)
@@ -315,14 +332,13 @@ bool RigFEM::NewtonSolver::step()
 	m_paramResult.push_back(totParam);
 
 	// 输出状态
-	PRINT_F("time: %.2lf\n", t);
-	PRINT_F("new params:\n");
+	PRINT_F("time: %.2lf", t);
+	PRINT_F("new params:");
 	for (int i = 0; i < nParam; ++i)
 	{
 		PRINT_F("%.2lf ", p[i]);
 	}
-	PRINT_F("\n");
-	PRINT_F("newton iteration end.\n");
+	PRINT_F("newton iteration end.");
 
 	return true;
 }

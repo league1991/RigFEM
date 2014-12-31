@@ -227,6 +227,10 @@ bool RiggedMesh::findOriPoints(tetgenio& in, tetgenio& out)
 	m_nSurfPnt = m_surfPntIdx.size();
 	m_nTotPnt = out.numberofpoints;
 
+	if (m_nIntPnt <= 0)
+		PRINT_F("no internal points, please increase tetrahedral resolution");
+	if (m_nSurfPnt <= 0)
+		PRINT_F("no rigged points");
 	return m_nIntPnt > 0 && m_nSurfPnt > 0 && m_nTotPnt > 0;
 }
 
@@ -421,13 +425,13 @@ bool RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigS
 				{
 					Hppil += jacobianDeri[k] * sResi[k];
 
-					double m = m_mass[m_surfPntIdx[k/3]];
+					double mass = m_mass[m_surfPntIdx[k/3]];
 					double v = 0;
 					for (int m = 0; m < m_nSurfPnt*3; ++m)
 					{
 						v += dFss.coeff(k,m) * J(m,l);
 					}
-					Hppil += J(k,i) *(m * J(k,l) * invH2 - v);
+					Hppil += J(k,i) *(mass * J(k,l) * invH2 - v);
 				}
 			}
 		}
@@ -883,6 +887,7 @@ bool RiggedMesh::init( tetgenio& surfMesh, RigBase* rig, double maxVolume /*= 1*
 		!surfMesh.pointlist || !surfMesh.facetlist ||
 		!rig || !rig->getNFreeParam())
 	{
+		PRINT_F("mesh data is null or no rig param");
 		return false;
 	}
 	clear();
@@ -918,6 +923,7 @@ bool RiggedMesh::init( tetgenio& surfMesh, RigBase* rig, double maxVolume /*= 1*
 
 	if (!res)
 	{
+		PRINT_F("failed to find surface points");
 		clear();
 		return false;
 	}
@@ -927,6 +933,7 @@ bool RiggedMesh::init( tetgenio& surfMesh, RigBase* rig, double maxVolume /*= 1*
 
 	if (!res)
 	{
+		PRINT_F("failed to build fem data");
 		clear();
 		return false;
 	}

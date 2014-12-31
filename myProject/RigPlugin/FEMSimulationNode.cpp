@@ -17,7 +17,7 @@ const char*	RigSimulationNode::m_nuName[2] = {"nu","nu"};					// ¿ØÖÆ²»Í¬ÖáÏò±äÐ
 const char*	RigSimulationNode::m_densityName[2]={"density","den"};				// ÃÜ¶È
 const char*	RigSimulationNode::m_timeStepName[2]={"stepTime","dt"};				// Ê±¼ä²½³¤
 const char* RigSimulationNode::m_deriStepName[2]={"derivativeStep", "dStep"};   // µ¼Êý²½³¤
-
+ 
 MObject RigSimulationNode::m_deriStep;
 MObject RigSimulationNode::m_transformMatrix;
 MObject RigSimulationNode::m_param;   
@@ -76,8 +76,8 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 			MBoundingBox mbbox(	MPoint(bbox[0], bbox[1], bbox[2]),
 								MPoint(bbox[3], bbox[4], bbox[5]));
 			mbbox.transformUsing(mat);
-			mbbox.expand(MPoint(-0.1,-0.5,-0.1));
-			mbbox.expand(MPoint(1.1,0.5,1.1));
+			mbbox.expand(MPoint(-1.1,-0.5,-1.1));
+			mbbox.expand(MPoint(4.1,0.5,1.1));
 			m_box = mbbox;
 
 			// ¸üÐÂ²ÎÊýÖµ
@@ -324,7 +324,7 @@ void RigSimulationNode::testRig()
 		MPoint p = it.position(MSpace::kWorld);
 		PRINT_F("%lf \t %lf \t %lf\n", p.x, p.y, p.z);
 	}
-}
+} 
 
 int RigSimulationNode::getNumParam()
 {
@@ -334,7 +334,7 @@ int RigSimulationNode::getNumParam()
 	for (int logIdx = 0; logIdx < nPlugs; ++logIdx)
 	{
 		MPlug paramPlug = paramArrayPlug.elementByLogicalIndex(logIdx,&s);
-		if (!s || !paramPlug.isConnected(&s))
+		if (!s || !paramPlug.isConnected(&s)) 
 			return logIdx;
 	}
 	return nPlugs;
@@ -357,7 +357,10 @@ bool RigSimulationNode::resetRig()
 
 	int nValidParam = getNumParam();
 	if (nValidParam <= 0)
+	{
+		PRINT_F("no param");
 		return false;
+	}
 
 	// »ñÈ¡Íø¸ñ¶ÔÏó
 	MStatus s;
@@ -365,11 +368,17 @@ bool RigSimulationNode::resetRig()
 	MPlug meshPlug = Global::getPlug(this, m_meshName[0]);
 	MObject meshObj = meshPlug.asMObject(MDGContext::fsNormal, &s);
 	if (s != MS::kSuccess)
+	{
+		PRINT_F("failed to get mesh obj.");
 		return false;
+	}
 	MFnMesh meshFn(meshObj);
 	int nSurfVtx = meshFn.numVertices();
 	if (nSurfVtx <= 0 || meshFn.numPolygons() <= 0)
+	{
+		PRINT_F("mesh is empty.");
 		return false;
+	}
 
 	// ³õÊ¼»¯rig¶ÔÏó
 	MPlug deriStepPlug = Global::getPlug(this, m_deriStepName[0]);
@@ -403,6 +412,7 @@ bool RigSimulationNode::resetRig()
 
 	if (!res)
 	{
+		PRINT_F("failed to get rig mesh obj.");
 		clearRig();
 		return false;
 	}
@@ -525,23 +535,55 @@ MStatus RigSimulationNode::setParamPlug( const double* param, int nParam )
 
 void RigSimulationNode::drawIcon()
 {
-	glBegin(GL_LINE_LOOP);
-	glVertex3f(0,0,0);
-	glVertex3f(1,0,0);
-	glVertex3f(0,0,1);
-	glEnd();
+	float p[][3] = {{0.5,0,-1},{0.8,0,1},{-1,0,1},{0.2,0,0.4}};
 
-	glBegin(GL_LINE_STRIP);
-	glVertex3f(1,0,0);
-	glVertex3f(0,0.5,0);
-	glVertex3f(0,0,1);
+	glBegin(GL_LINE_LOOP);
+	glVertex3fv(p[0]);
+	glVertex3fv(p[1]);
+	glVertex3fv(p[2]);
 	glEnd();
 
 	glBegin(GL_LINES);
-	glVertex3f(0,0,0);
-	glVertex3f(0,0.5,0);
+	glVertex3fv(p[0]);
+	glVertex3fv(p[3]);
+
+	glVertex3fv(p[1]);
+	glVertex3fv(p[3]);
+
+	glVertex3fv(p[2]);
+	glVertex3fv(p[3]); 
+	glEnd();
+
+	// draw "FEM"
+	glBegin(GL_LINE_STRIP);
+	glVertex3f(1.8,0,0);
+	glVertex3f(1,0,0);
+	glVertex3f(1,0,1);
+	glEnd();
+
+	glBegin(GL_LINE_STRIP);
+	glVertex3f(2.8,0,0);
+	glVertex3f(2,0,0);
+	glVertex3f(2,0,1);
+	glVertex3f(2.8,0,1);
+	glEnd();
+
+	glBegin(GL_LINE_STRIP);
+	glVertex3f(3,0,1);
+	glVertex3f(3,0,0);
+	glVertex3f(3.4,0,0.7);
+	glVertex3f(3.8,0,0);
+	glVertex3f(3.8,0,1);
+	glEnd();
+
+	glBegin(GL_LINES);
+	glVertex3f(1,0,0.5);
+	glVertex3f(1.6,0,0.5);
+	glVertex3f(2,0,0.5); 
+	glVertex3f(2.6,0,0.5);
 	glEnd();
 }
+
 
 
 

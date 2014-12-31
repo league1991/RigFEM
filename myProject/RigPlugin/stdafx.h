@@ -101,6 +101,7 @@
 // Eigen
 #include "Eigen/sparse"
 #include "Eigen/LU"
+#include "Eigen/QR"
 #include "Eigen/SuperLUSupport"
 
 typedef Eigen::SparseMatrix<double> EigSparse;
@@ -110,7 +111,7 @@ typedef Eigen::VectorXd				EigVec;
 // 体网格生成
 #include "tetgen.h"
 
-#define PRINT_F(format,...)			{char buf[100];sprintf(buf,format, ##__VA_ARGS__);MGlobal::displayInfo(buf);}
+#define PRINT_F(format,...)			{char buf[200];sprintf(buf,format, ##__VA_ARGS__);MGlobal::displayInfo(buf);}
 
 // 本地文件
 #include "Utilities.h"

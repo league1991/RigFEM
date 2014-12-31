@@ -51,6 +51,8 @@ public:
 		return str;
 	}
 
+	static std::string toString(const EigVec&vec, const char*name);
+
 	// v = [v1 v2]
 	static void mergeVec(const EigVec& v1, const EigVec& v2, EigVec& v);
 };

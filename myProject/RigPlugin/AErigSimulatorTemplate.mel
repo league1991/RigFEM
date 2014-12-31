@@ -78,6 +78,7 @@ global proc AErigSimulatorTemplate(string $nodeName)
 			editorTemplate -addControl "nu";
 			editorTemplate -addControl "density";
 			editorTemplate -addControl "stepTime";
+			editorTemplate -addControl "derivativeStep";
 			editorTemplate -callCustom "initSimulatorControl" "modifySimulatorControl" "noAttr";	
 		editorTemplate -endLayout;
 		
