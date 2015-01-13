@@ -207,6 +207,10 @@ bool RigFEM::NewtonSolver::step()
 	EigSparse Hnn;
 	EigVec	 G,G0,x,dx,dN,dP,dGN,dGP;
 	int maxIter = m_maxIter;
+
+	char fileName[100];
+	sprintf(fileName, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/%dFrame.m", m_paramResult.size());
+	//ofstream file(fileName);
 	for (int ithIter = 0; ithIter < maxIter; ++ithIter)
 	{
 		// 计算当前q p值的函数值、梯度值和Hessian
@@ -223,6 +227,10 @@ bool RigFEM::NewtonSolver::step()
 		Eigen::Map<EigVec> Gn(&G[0], nIntDof);				// G = [Gn Gp]
 		Eigen::Map<EigVec> Gp(&G[0]+nIntDof, nParam);
 
+		// 如果梯度接近0，终止迭代
+		if(Gn.norm() < 1e-2 && Gp.norm() < 1e-2)
+			break;
+
 		// 计算Hessian
 		EigDense* pHpp = &Hpp;//ithIter == 0 ? &Hpp : NULL;
 		isSucceed &= m_fem->computeHessian(n,p, t, Hnn, Hnp, Hpn, pHpp);
@@ -230,6 +238,31 @@ bool RigFEM::NewtonSolver::step()
 		PRINT_F("compute hessian:%f",(t2-t1)/1000.f);
 		if (!isSucceed)
 			return false;
+		// 若某参数梯度为0，此时为预防方程退化，强制修改方程系数，令该参数增量为0
+// 		for (int ithParam = 0; ithParam < nParam; ++ithParam)
+// 		{ 
+// 			if (abs(Gp[ithParam]) < 1e-4)
+// 			{
+// 				const double v = 1e5;
+// 				for (int ithIntDof = 0; ithIntDof < nIntDof; ++ithIntDof)
+// 				{
+// 					Hnp(ithIntDof, ithParam) = v;
+// 				}
+// 				for (int jthParam = 0; jthParam < nParam; ++jthParam)
+// 				{
+// 					Hpp(jthParam, ithParam) = v;
+// 				}
+// 			}
+// 		}
+// 		string HnnStr = Utilities::matToString(Hnn, "Hnn");
+// 		string HnpStr = Utilities::matToString(Hnp, "Hnp");
+// 		string HpnStr = Utilities::matToString(Hpn, "Hpn");
+// 		string HppStr = Utilities::matToString(Hpp, "Hpp");
+// 		file << HnnStr;
+// 		file << HnpStr;
+// 		file << HpnStr;
+// 		file << HppStr;
+		//PRINT_F("%s\n%s\n%s\n%s\n", HnnStr.data(), HnpStr.data(), HpnStr.data(), HppStr.data());
 
 		if (ithIter > 0 && 0)
 		{
@@ -271,9 +304,14 @@ bool RigFEM::NewtonSolver::step()
 		EigDense A = Hpp - Hpn * invHnnHnp;
 		EigDense b = -Gp + Hpn * invHnnN;
 		dP= A.colPivHouseholderQr().solve(b);
+		string Astr = Utilities::matToString(A, "A");
+		string bStr = Utilities::matToString(b, "b");
+		//file << Astr << bStr;
 
 		EigVec   b2= -Gn - Hnp * dP;
 		dN= solver.solve(b2);
+		Global::showVector(Gp, "Gp");
+		Global::showVector(dP, "dP");
 		int t3 = clock();
 		PRINT_F("compute dN, dP:%f",(t3-t2)/1000.f);
 
@@ -312,16 +350,18 @@ bool RigFEM::NewtonSolver::step()
 		p += dP;
 
 		PRINT_F("|dN|=%le |dP|=%le |resiN|∞=%le |resiP|∞=%le", dN.norm(), dP.norm(), resiN.maxCoeff(), resiP.maxCoeff());
+		Global::showVector(p, "p");
 
 		
-		if (resiN.maxCoeff() < 1e-5 && resiP.maxCoeff() < 1e-5)
-			break;
-		if (dN.norm() < 1e-12 && dP.norm() < 1e-15)
+		//if (resiN.maxCoeff() < 1e-5 && resiP.maxCoeff() < 1e-5)
+		//	break;
+		if (dN.norm() < 1e-3 && dP.norm() < 1e-3)
 			break;
 			
 
 		G0 = G;
 	}
+	//file.close();
 	// 更新为最终迭代状态
 	m_fem->setDof(n, p);
 

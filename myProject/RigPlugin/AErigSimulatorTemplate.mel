@@ -33,6 +33,7 @@ global proc execSimulator(string $nodeName)
 		// step progress bar
         if(`progressBar -query -isCancelled $gMainProgressBar`)
             break;
+		print("\n\ncurrent Frame:"+ $t + "\n");
         progressBar -edit -step 1 $gMainProgressBar;
 			
 		currentTime $t;

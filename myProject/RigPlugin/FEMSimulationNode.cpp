@@ -30,7 +30,7 @@ MObject	RigSimulationNode::m_nu;					// 控制不同轴向变形相互影响的参数
 MObject	RigSimulationNode::m_density;				// 密度
 MObject	RigSimulationNode::m_timeStep;				// 时间步长
 
-RigSimulationNode::RigSimulationNode(void):m_box(MPoint(-0.1,-0.5,-0.1), MPoint(1.1,0.5,1.1)),m_rigMesh(NULL), m_rig(NULL), m_solver(NULL)
+RigSimulationNode::RigSimulationNode(void):m_box(MPoint(-1.1,-0.5,-1.1), MPoint(4.1,0.5,1.1)),m_rigMesh(NULL), m_rig(NULL), m_solver(NULL)
 {
 }
 
@@ -41,8 +41,12 @@ RigSimulationNode::~RigSimulationNode(void)
 
 void RigSimulationNode::postConstructor()
 {
-	MFnDependencyNode nodeFn(thisMObject());
-	nodeFn.setName( "rigSimulationShape#");
+	MStatus s;
+	MFnDependencyNode nodeFn(thisMObject(), &s);
+	if (s)
+	{
+		nodeFn.setName( "rigSimulationShape#", &s);
+	}
 }
 
 void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::DisplayStyle style, M3dView:: DisplayStatus )
@@ -52,6 +56,7 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 
 	drawIcon();
 
+	m_box = MBoundingBox(MPoint(-1.1,-0.5,-1.1), MPoint(4.1,0.5,1.1));
 	if (m_rigMesh)
 	{
 		int curFrame = getCurFrame();
@@ -73,19 +78,17 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 			m_rigMesh->showStatus(status, bbox);
 
 			// 更新包围盒
-			MBoundingBox mbbox(	MPoint(bbox[0], bbox[1], bbox[2]),
-								MPoint(bbox[3], bbox[4], bbox[5]));
-			mbbox.transformUsing(mat);
-			mbbox.expand(MPoint(-1.1,-0.5,-1.1));
-			mbbox.expand(MPoint(4.1,0.5,1.1));
-			m_box = mbbox;
-
+			double xformBox[6];
+			Utilities::transformBBox(bbox, bbox+3, matBuf, xformBox, xformBox+3);
+			m_box.expand(MPoint(xformBox[0], xformBox[1], xformBox[2]));
+			m_box.expand(MPoint(xformBox[3], xformBox[4], xformBox[5]));
+ 
 			// 更新参数值
 			const EigVec& p = status.getParam();
 			setParamPlug(&p[0], p.size());
 		}
 
-		//glPopMatrix();
+		glPopMatrix();
 	}
 	glPopAttrib();
 	view.endGL();

@@ -101,4 +101,18 @@ public:
 		}
 		return s;
 	}
+
+	template<class MatrixType>
+	static void showMatrix(const MatrixType& mat, const char* name)
+	{
+		std::string str = Utilities::matToString(mat, name);
+		MGlobal::displayInfo(str.data());
+	}
+
+	template<class VectorType>
+	static void showVector(const VectorType& vec, const char* name)
+	{
+		std::string str = Utilities::vecToString(vec, name);
+		MGlobal::displayInfo(str.data());
+	}
 };

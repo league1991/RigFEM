@@ -86,16 +86,4 @@ void MathUtilities::testMath()
 	PRINT_F("xmin = %lf  fxmin = %lf\n", xMin, fxMin);
 }
 
-std::string RigFEM::Utilities::toString( const EigVec&vec, const char*name )
-{
-	std::string str;
-	str += (string(name) + "=[\n");
-	char digitStr[50];
-	for (int i = 0; i < vec.size(); ++i)
-	{
-		sprintf(digitStr, "%lf ", vec[i]);
-		str += digitStr;
-	}
-	str += "\n];\n";
-	return str;
-}
+
