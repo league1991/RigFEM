@@ -122,7 +122,7 @@ int RigFEM::LineSearch::lineSearch( const EigVec& x0, const EigVec& dx, const Ei
 
 	for (int i = 1; ai < amax; ++i)
 	{
-		PRINT_F("%dth line search iter, a = %lf", i-1,ai);
+		//PRINT_F("%dth line search iter, a = %lf", i-1,ai);
 		EigVec x = m_x0 + m_dx * ai;
 
 		// 只计算函数值，尽量提高效率
@@ -131,7 +131,7 @@ int RigFEM::LineSearch::lineSearch( const EigVec& x0, const EigVec& dx, const Ei
 		int t0 = clock();
 		computeValueAndDeri(x, &fi, NULL);
 		int t1 = clock();
-		PRINT_F("line search compute value and deri #1: %f", (t1-t0)/1000.f);
+		//PRINT_F("line search compute value and deri #1: %f", (t1-t0)/1000.f);
 
 		// 若wolfe充分下降条件被违反或函数值较上次增长,终止迭代
 		if (fi > m_f0 + m_c1 * ai * m_df0 ||
@@ -143,7 +143,7 @@ int RigFEM::LineSearch::lineSearch( const EigVec& x0, const EigVec& dx, const Ei
 
 		computeValueAndDeri(x, NULL, &dfi);
 		int t2 = clock();
-		PRINT_F("line search compute value and deri #2: %f", (t2-t1)/1000.f);
+		//PRINT_F("line search compute value and deri #2: %f", (t2-t1)/1000.f);
 
 		// wolfe充分下降条件被满足，函数值较上次下降				
 		if (abs(dfi) <= m_c2 * abs(m_df0))
@@ -193,7 +193,7 @@ RigFEM::LineSearch::LineSearch( ObjectFunction* objFun /*= NULL*/, double initSt
 
 bool RigFEM::NewtonSolver::step()
 {
-	PRINT_F("########### newton iteration begin. #############");
+	PRINT_F("############################################ newton iteration begin. ############################################");
 	EigVec p,n;
 	m_fem->getDof(n,p);
 	double t = m_fem->getCurTime();
@@ -214,13 +214,13 @@ bool RigFEM::NewtonSolver::step()
 	for (int ithIter = 0; ithIter < maxIter; ++ithIter)
 	{
 		// 计算当前q p值的函数值、梯度值和Hessian
-		PRINT_F("%dth Iteration", ithIter);
+		PRINT_F("######################### %dth Iteration #########################", ithIter);
 		int t0 = clock();
 		double   f;
 		Utilities::mergeVec(n,p,x);							// x = [n p]
 		isSucceed &= m_fem->computeValueAndGrad(x, tVec, &f, &G);
 		int t1 = clock();
-		PRINT_F("compute value and grad:%f", (t1-t0)/1000.f);
+		//PRINT_F("compute value and grad:%f", (t1-t0)/1000.f);
 		if (!isSucceed)
 			return false;
 
@@ -228,14 +228,20 @@ bool RigFEM::NewtonSolver::step()
 		Eigen::Map<EigVec> Gp(&G[0]+nIntDof, nParam);
 
 		// 如果梯度接近0，终止迭代
-		if(Gn.norm() < 1e-2 && Gp.norm() < 1e-2)
+		double GnNorm = Gn.norm();
+		double GpNorm = Gp.norm();
+		PRINT_F("f = %lf, |Gn| = %lf, |GP| = %lf, minGradSize = %e", f, GnNorm, GpNorm, m_minGradSize);
+		if(GnNorm < m_minGradSize && GpNorm < m_minGradSize)
+			break;
+		// 如果步长太小，也终止迭代
+		if (ithIter > 0 && dN.norm() < m_minStepSize && dP.norm() < m_minStepSize)
 			break;
 
 		// 计算Hessian
 		EigDense* pHpp = &Hpp;//ithIter == 0 ? &Hpp : NULL;
 		isSucceed &= m_fem->computeHessian(n,p, t, Hnn, Hnp, Hpn, pHpp);
 		int t2 = clock();
-		PRINT_F("compute hessian:%f",(t2-t1)/1000.f);
+		//PRINT_F("compute hessian:%f",(t2-t1)/1000.f);
 		if (!isSucceed)
 			return false;
 		// 若某参数梯度为0，此时为预防方程退化，强制修改方程系数，令该参数增量为0
@@ -262,7 +268,7 @@ bool RigFEM::NewtonSolver::step()
 // 		file << HnpStr;
 // 		file << HpnStr;
 // 		file << HppStr;
-		//PRINT_F("%s\n%s\n%s\n%s\n", HnnStr.data(), HnpStr.data(), HpnStr.data(), HppStr.data());
+		
 
 		if (ithIter > 0 && 0)
 		{
@@ -313,7 +319,7 @@ bool RigFEM::NewtonSolver::step()
 		Global::showVector(Gp, "Gp");
 		Global::showVector(dP, "dP");
 		int t3 = clock();
-		PRINT_F("compute dN, dP:%f",(t3-t2)/1000.f);
+		//PRINT_F("compute dN, dP:%f",(t3-t2)/1000.f);
 
 		// 进行一维搜索
 		Utilities::mergeVec(dN, dP, dx);
@@ -335,7 +341,7 @@ bool RigFEM::NewtonSolver::step()
 			PRINT_F("line search failed: a = %lf", a);
 		}
 		int t4 = clock();
-		PRINT_F("line search:%f", (t4-t3)/1000.f);
+		//PRINT_F("line search:%f", (t4-t3)/1000.f);
 
 		// 计算残差
 		dGN = Hnn * dN + Hnp * dP;
@@ -350,16 +356,16 @@ bool RigFEM::NewtonSolver::step()
 		p += dP;
 
 		PRINT_F("|dN|=%le |dP|=%le |resiN|∞=%le |resiP|∞=%le", dN.norm(), dP.norm(), resiN.maxCoeff(), resiP.maxCoeff());
+		PRINT_F("minStepSize = %e", m_minStepSize);
 		Global::showVector(p, "p");
-
 		
-		//if (resiN.maxCoeff() < 1e-5 && resiP.maxCoeff() < 1e-5)
-		//	break;
-		if (dN.norm() < 1e-3 && dP.norm() < 1e-3)
-			break;
-			
+		//Utilities::saveVector(n, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/N.txt");
+		//Utilities::saveVector(p, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/P.txt");
+		//Utilities::loadVector(n, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/N_nodir.txt");
+		//Utilities::loadVector(p, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/P_nodir.txt");
 
 		G0 = G;
+		PRINT_F("************ load N P ***************");
 	}
 	//file.close();
 	// 更新为最终迭代状态
@@ -373,17 +379,18 @@ bool RigFEM::NewtonSolver::step()
 
 	// 输出状态
 	PRINT_F("time: %.2lf", t);
-	PRINT_F("new params:");
-	for (int i = 0; i < nParam; ++i)
-	{
-		PRINT_F("%.2lf ", p[i]);
-	}
-	PRINT_F("newton iteration end.");
+// 	PRINT_F("new params:");
+// 	for (int i = 0; i < nParam; ++i)
+// 	{
+// 		PRINT_F("%.2lf ", p[i]);
+// 	}
+	PRINT_F("############################################# newton iteration end. #############################################");
 
 	return true;
 }
 
-RigFEM::NewtonSolver::NewtonSolver( RiggedMesh* fem ) :m_fem(fem), m_maxIter(10), m_lineSearch(fem)
+RigFEM::NewtonSolver::NewtonSolver( RiggedMesh* fem ) :m_fem(fem), m_maxIter(10), m_lineSearch(fem),
+m_minStepSize(1e-3), m_minGradSize(1e-2)
 {
 
 }
@@ -409,6 +416,13 @@ void RigFEM::NewtonSolver::setMesh( RiggedMesh* fem )
 {
 	m_fem = fem;
 	m_lineSearch = LineSearch(fem);
+}
+
+void RigFEM::NewtonSolver::setTerminateCond( int maxIter, double minStepSize, double minGradSize )
+{
+	m_maxIter = maxIter;
+	m_minStepSize = minStepSize;
+	m_minGradSize = minGradSize;
 }
 
 bool RigFEM::SimpleFunction::computeValueAndGrad( const EigVec& x, double* v /*= NULL*/, EigVec* grad /*= NULL*/ )

@@ -809,6 +809,7 @@ bool RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& param,  doub
 			ma[i*3+1] *= m_mass[i];
 			ma[i*3+2] *= m_mass[i];
 		}
+		//PRINT_F("|m_q| = %lf, |m_v| = %lf, |m_a| = %lf, |m_param| = %lf", m_q.norm(), m_v.norm(), m_a.norm(), m_param.norm());
 
 		// 计算此状态下的力
 		EigVec f(m_nTotPnt*3);
@@ -878,6 +879,23 @@ void RiggedMesh::getDof( EigVec& n, EigVec& p )
 		n(ithInt*3+1) = m_q(idx*3+1);
 		n(ithInt*3+2) = m_q(idx*3+2);
 	}
+}
+
+bool RiggedMesh::getN(RigStatus& s, EigVec& n)
+{
+	const EigVec& q = s.getQ();
+	if (q.size() != m_nTotPnt * 3)
+		return false;
+
+	n.resize(m_nIntPnt*3);
+	for (int ithInt = 0; ithInt < m_nIntPnt; ++ithInt)
+	{
+		int idx = m_intPntIdx[ithInt];
+		n(ithInt*3)   = q(idx*3);
+		n(ithInt*3+1) = q(idx*3+1);
+		n(ithInt*3+2) = q(idx*3+2);
+	}
+	return true;
 }
 
 
@@ -1091,4 +1109,96 @@ void FEMSystem::saveResult( const char* fileName )
 void FEMSystem::step()
 {
 	m_solver.step();
+}
+
+bool RiggedMesh::testCurFrameHessian( RigStatus& lastFrame, RigStatus& curFrame, double noiseN /*= 1.0*/, double noiseP /*= 1.0*/ )
+{
+	// 当前帧的配置
+	PRINT_F("Test Gradient and Hessian");
+	PRINT_F("noiseN = %lf, noiseP = %lf", noiseN, noiseP);
+	setStatus(lastFrame);
+	EigVec n, p;
+	if(!getN(curFrame, n))
+		return false;
+	p = curFrame.getParam();
+
+	int nIntDof = m_nIntPnt * 3;
+	EigVec dN = EigVec::Random(nIntDof) * (noiseN * 2.0) - EigVec::Constant(nIntDof, noiseN);
+	EigVec dP = EigVec::Random(m_nParam) * (noiseP * 2.0) - EigVec::Constant(m_nParam, noiseP);
+
+	EigVec gn, gp;
+	EigDense Hnp, Hpn, Hpp;
+	EigSparse Hnn;
+
+	computeGradient(n, p, m_t, gn, gp);
+	computeHessian(n, p, m_t, Hnn, Hnp, Hpn, &Hpp);
+	for (double step = 1; step > 1e-15; step *= 0.1)
+	{
+		EigVec dNi = dN * step;
+		EigVec dPi = dP * step;
+
+		// 计算近似的梯度值
+		EigVec gni_app = gn + Hnn * dNi + Hnp * dPi;
+		EigVec gpi_app = gp + Hpn * dNi + Hpp * dPi;
+
+		// 计算准确的梯度值
+		EigVec ni = n + dNi;
+		EigVec pi = p + dPi;
+		EigVec gni, gpi;
+		computeGradient(ni, pi, m_t, gni, gpi);
+
+		EigVec resN = gni - gni_app;
+		EigVec resP = gpi - gpi_app;
+
+		double resNNorm = resN.norm();
+		double resPNorm = resP.norm();
+		resN = resN.cwiseAbs();
+		resP = resP.cwiseAbs();
+		double resNMax  = resN.maxCoeff();
+		double resPMax  = resP.maxCoeff();
+
+		double invE = 1.0 / (step * step);
+		PRINT_F("ε=%le  maxResN=%le  maxResP=%le  |maxN|/ε^2=%le  |maxP|/ε^2=%le",
+			step, resNMax, resPMax, resNMax * invE, resPMax* invE);
+	}
+	return true;
+}
+
+bool RiggedMesh::testCurFrameGrad( RigStatus& lastFrame, RigStatus& curFrame, double noiseN, double noiseP)
+{
+	// 当前帧的配置
+	PRINT_F("Test Gradient and Function Value");
+	PRINT_F("noiseN = %lf, noiseP = %lf", noiseN, noiseP);
+	setStatus(lastFrame);
+	EigVec n, p;
+	if(!getN(curFrame, n))
+		return false;
+	p = curFrame.getParam();
+
+	int nIntDof = m_nIntPnt * 3;
+	EigVec dN = EigVec::Random(nIntDof) * (noiseN * 2) - EigVec::Constant(nIntDof, noiseN);
+	EigVec dP = EigVec::Random(m_nParam)* (noiseP * 2) - EigVec::Constant(m_nParam, noiseP);
+	EigVec gn, gp;
+	computeGradient(n,p, m_t, gn, gp);
+	double f0 = computeValue(n, p, m_t);
+	PRINT_F("funcVal:%lf gradient: |gn| = %lf, |gp| = %lf", f0, gn.norm(), gp.norm());
+
+	for (double step = 1; step > 1e-15; step *= 0.1)
+	{
+		EigVec dNi = dN * step;
+		EigVec dPi = dP * step;
+
+		// 计算近似的函数值
+		double fi_app = f0 + gn.dot(dNi) + gp.dot(dPi);
+
+		// 计算准确的函数值
+		EigVec ni = n + dNi;
+		EigVec pi = p + dPi;
+		double fi = computeValue(ni, pi, m_t);
+
+		double error = abs(fi-fi_app);
+		PRINT_F("step = %le funVal = %le approxVal = %le error = %le error/dx^2 = %le", step, fi, fi_app, error, error/(step*step));
+	}
+	PRINT_F("\n");
+	return true;
 }

@@ -87,3 +87,26 @@ void MathUtilities::testMath()
 }
 
 
+
+void RigFEM::Utilities::transformBBox( const double srcMin[3], const double srcMax[3], const double mat[4][4], double dstMin[3], double dstMax[3] )
+{
+	double x[2] = {srcMin[0], srcMax[0]};
+	double y[2] = {srcMin[1], srcMax[1]};
+	double z[2] = {srcMin[2], srcMax[2]};
+
+	dstMin[0] = dstMin[1] = dstMin[2] = DBL_MAX;
+	dstMax[0] = dstMax[1] = dstMax[2] = -DBL_MAX;
+	for(int ithPnt = 0; ithPnt < 8; ++ithPnt)
+	{
+		int xIdx =  ithPnt & 0x1;
+		int yIdx = (ithPnt >> 1) & 0x1;
+		int zIdx = (ithPnt >> 2) & 0x1;
+
+		for(int j = 0; j < 3; ++j)
+		{
+			double rj = x[xIdx]*mat[0][j] + y[yIdx]*mat[1][j] + z[zIdx]*mat[2][j] + mat[3][j];
+			dstMin[j] = dstMin[j] < rj ? dstMin[j] : rj;
+			dstMax[j] = dstMax[j] > rj ? dstMax[j] : rj;
+		}
+	}
+}

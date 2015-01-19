@@ -80,6 +80,9 @@ global proc AErigSimulatorTemplate(string $nodeName)
 			editorTemplate -addControl "density";
 			editorTemplate -addControl "stepTime";
 			editorTemplate -addControl "derivativeStep";
+			editorTemplate -addControl "inverseGradTolerance";
+			editorTemplate -addControl "inverseStepTolerance";
+			editorTemplate -addControl "maxIteration";			
 			editorTemplate -callCustom "initSimulatorControl" "modifySimulatorControl" "noAttr";	
 		editorTemplate -endLayout;
 		

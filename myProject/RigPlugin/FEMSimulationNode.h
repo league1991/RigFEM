@@ -33,6 +33,9 @@ public:
 
 	// 用于测试
 	void				testRig();
+	// 测试当前帧的Hessian
+	bool				testHessian(double noiseN, double noiseP);
+	bool				testGrad(double noiseN, double noiseP);
 
 private:
 	
@@ -42,6 +45,10 @@ private:
 	int					getCurFrame();
 	MStatus				setParamToInit();		// 设置参数为初始参数
 	void				drawIcon();
+	
+	bool				updateDeriStepSize();	// 更新有限差商导数步长
+	bool				updateTerminationCond();// 更新终止条件
+
 	MBoundingBox		m_box;
 
 	static MObject		m_initParam;
@@ -54,7 +61,11 @@ private:
 	static MObject		m_nu;					// 控制不同轴向变形相互影响的参数
 	static MObject		m_density;				// 密度
 	static MObject		m_timeStep;				// 时间步长
+
 	static MObject		m_deriStep;				// 参数求导时的有限差商大小
+	static MObject		m_maxIter;				// 最大迭代次数
+	static MObject		m_minStepSize;			// 迭代的最小步长，若步长小于此值，终止迭代
+	static MObject		m_minGradSize;			// 最小的梯度值，如梯度小于此值，终止迭代
 
 	static const char*  m_initParamName[2];
 	static const char*  m_paramName[2];
@@ -66,7 +77,11 @@ private:
 	static const char*	m_nuName[2];					// 控制不同轴向变形影响程度的参数
 	static const char*	m_densityName[2];				// 密度
 	static const char*	m_timeStepName[2];				// 时间步长
-	static const char*  m_deriStepName[2];					// 参数求导时的有限差商大小
+	static const char*  m_deriStepName[2];				// 参数求导时的有限差商大小
+	static const char*  m_maxIterName[2];				// 最大迭代次数
+	static const char*  m_minStepSizeName[2];			// 迭代的最小步长，若步长小于此值，终止迭代
+	static const char*  m_minGradSizeName[2];			// 最小的梯度值，如梯度小于此值，终止迭代
+
 				
 	RigFEM::GeneralRig*	m_rig;					// 封装了节点求值机制	
 	RigFEM::RiggedMesh*	m_rigMesh;				// fem 数据

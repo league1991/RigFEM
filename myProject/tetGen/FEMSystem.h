@@ -51,7 +51,12 @@ public:
 	// 测试函数值计算是否正确
 	bool testValue();
 	void testStep(double dt);
-	
+
+	// 以下函数被maya mel命令调用
+	// 测试当前帧的Hessian
+	bool testCurFrameHessian( RigStatus& lastFrame, RigStatus& curFrame, double noiseN = 1.0, double noiseP=1.0);
+	bool testCurFrameGrad( RigStatus& lastFrame, RigStatus& curFrame, double noiseN = 1.0, double noiseP = 1.0);
+
 	// rig数据
 	RigBase*	m_transRig;
 
@@ -73,6 +78,8 @@ private:
 	bool computeSurfOffset(const double* p, double t, EigVec& s);
 
 	double computeValue(const EigVec& q);
+
+	bool getN(RigStatus& s, EigVec& n);
 
 	bool computeHnn(vector<int>& nIdx, vector<int>& sIdx)
 	{

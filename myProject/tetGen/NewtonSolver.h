@@ -84,13 +84,20 @@ namespace RigFEM
 		// 计算函数
 		bool step();
 
+		// 终止条件
+		void setTerminateCond(int maxIter, double minStepSize, double minGradSize);
+
 		void clearResult(){m_paramResult.clear();}
 		void saveResult(const char* fileName, const char* paramName = "param");
 
 	private:
 		RiggedMesh*	m_fem;
 		LineSearch	m_lineSearch;
-		int			m_maxIter;
+
+		// 以下是迭代的终止条件
+		int			m_maxIter;			// 最大迭代次数			
+		double		m_minStepSize;		// 最小步长，步长长度小于此值时迭代终止
+		double		m_minGradSize;		// 梯度长度小于此值时迭代终止
 
 		// 记录模拟出来的参数变化
 		vector<EigVec>			m_paramResult;				// 参数向量，包括关键帧驱动的参数，和模拟出来的参数

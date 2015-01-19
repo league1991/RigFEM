@@ -17,7 +17,15 @@ const char*	RigSimulationNode::m_nuName[2] = {"nu","nu"};					// ¿ØÖÆ²»Í¬ÖáÏò±äÐ
 const char*	RigSimulationNode::m_densityName[2]={"density","den"};				// ÃÜ¶È
 const char*	RigSimulationNode::m_timeStepName[2]={"stepTime","dt"};				// Ê±¼ä²½³¤
 const char* RigSimulationNode::m_deriStepName[2]={"derivativeStep", "dStep"};   // µ¼Êý²½³¤
- 
+const char* RigSimulationNode::m_minGradSizeName[2] = {"inverseGradTolerance", "invGradSize"};
+
+const char* RigSimulationNode::m_minStepSizeName[2] = {"inverseStepTolerance", "invStepSize"};
+
+const char* RigSimulationNode::m_maxIterName[2] = {"maxIteration", "maxIter"};
+
+MObject RigSimulationNode::m_minGradSize;
+MObject RigSimulationNode::m_minStepSize;
+MObject RigSimulationNode::m_maxIter; 
 MObject RigSimulationNode::m_deriStep;
 MObject RigSimulationNode::m_transformMatrix;
 MObject RigSimulationNode::m_param;   
@@ -207,6 +215,36 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setSoftMax(1e-2);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
+	m_minGradSize = nAttr.create(m_minGradSizeName[0], m_minGradSizeName[1], MFnNumericData::kDouble,100, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0.001);
+	nAttr.setMax(1e15);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_minStepSize = nAttr.create(m_minStepSizeName[0], m_minStepSizeName[1], MFnNumericData::kDouble,100000, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0.001);
+	nAttr.setMax(1e7);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_maxIter = nAttr.create(m_maxIterName[0], m_maxIterName[1], MFnNumericData::kInt,10, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(1);
+	nAttr.setMax(50);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
 	m_mesh = tAttr.create(m_meshName[0], m_meshName[1], MFnData::kMesh, &s);
 	tAttr.setStorable(false);
 	tAttr.setHidden(false);
@@ -244,6 +282,12 @@ MStatus RigSimulationNode::initialize()
 	s = addAttribute(m_timeStep);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_deriStep);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_maxIter);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_minGradSize);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_minStepSize);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	s = attributeAffects(m_initParam, m_param);
@@ -438,6 +482,33 @@ MMatrix RigSimulationNode::getMatrix()
 	return matrixData.matrix();
 }
 
+bool RigSimulationNode::testHessian(double noiseN, double noiseP)
+{
+	if (!m_rig || !m_rigMesh || !m_solver)
+		return false;
+
+	updateDeriStepSize();
+
+	// ÉèÖÃµ±Ç°Ö¡×´Ì¬
+	RigStatus lastStatus, curStatus;
+	int curFrame = getCurFrame();
+	bool res = m_recorder.getStatus(curFrame-1, lastStatus);
+	res&= m_recorder.getStatus(curFrame, curStatus);
+	if (!res)
+		return false;
+	m_rigMesh->testCurFrameHessian(lastStatus, curStatus, noiseN, noiseP);
+	return true;
+}
+bool RigSimulationNode::updateDeriStepSize()
+{
+	if(!m_rig)
+		return false;
+	MPlug deriStepPlug = Global::getPlug(this, m_deriStepName[0]);
+	double deriStepVal = 1e-3;
+	deriStepPlug.getValue(deriStepVal);
+	m_rig->setDelta(deriStepVal);
+	return true;
+}
 bool RigSimulationNode::stepRig()
 {
 	if (!m_rig || !m_rigMesh || !m_solver)
@@ -462,11 +533,9 @@ bool RigSimulationNode::stepRig()
 	if(!m_rig)
 		return false; 
   
-	// ÉèÖÃµ¼Êý²½³¤
-	MPlug deriStepPlug = Global::getPlug(this, m_deriStepName[0]);
-	double deriStepVal = 1e-3;
-	deriStepPlug.getValue(deriStepVal);
-	m_rig->setDelta(deriStepVal);
+	
+	updateDeriStepSize();		// ÉèÖÃµ¼Êý²½³¤
+	updateTerminationCond();	// ÉèÖÃÖÕÖ¹Ìõ¼þ
 
 	// Ä£Äâ
 	if(!m_solver->step())
@@ -586,6 +655,39 @@ void RigSimulationNode::drawIcon()
 	glVertex3f(2.6,0,0.5);
 	glEnd();
 }
+
+bool RigSimulationNode::updateTerminationCond()
+{
+	if (!m_solver)
+		return false;
+	MPlug maxIterPlug = Global::getPlug(this, m_maxIterName[0]);
+	MPlug minGradPlug = Global::getPlug(this, m_minGradSizeName[0]);
+	MPlug minStepPlug = Global::getPlug(this, m_minStepSizeName[0]);
+
+	int maxIter = maxIterPlug.asInt();
+	double gradSize= 1.0 / minGradPlug.asDouble();
+	double stepSize= 1.0 / minStepPlug.asDouble();
+	m_solver->setTerminateCond(maxIter, stepSize, gradSize);
+	return true;
+}
+
+bool RigSimulationNode::testGrad( double noiseN, double noiseP )
+{
+	if (!m_rig || !m_rigMesh || !m_solver)
+		return false;
+	updateDeriStepSize();
+
+	// ÉèÖÃµ±Ç°Ö¡×´Ì¬
+	RigStatus lastStatus, curStatus;
+	int curFrame = getCurFrame();
+	bool res = m_recorder.getStatus(curFrame-1, lastStatus);
+	res&= m_recorder.getStatus(curFrame, curStatus);
+	if (!res)
+		return false;
+	m_rigMesh->testCurFrameGrad(lastStatus, curStatus, noiseN, noiseP);
+	return true;
+}
+
 
 
 
