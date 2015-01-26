@@ -18,9 +18,7 @@ const char*	RigSimulationNode::m_densityName[2]={"density","den"};				// 密度
 const char*	RigSimulationNode::m_timeStepName[2]={"stepTime","dt"};				// 时间步长
 const char* RigSimulationNode::m_deriStepName[2]={"derivativeStep", "dStep"};   // 导数步长
 const char* RigSimulationNode::m_minGradSizeName[2] = {"inverseGradTolerance", "invGradSize"};
-
 const char* RigSimulationNode::m_minStepSizeName[2] = {"inverseStepTolerance", "invStepSize"};
-
 const char* RigSimulationNode::m_maxIterName[2] = {"maxIteration", "maxIter"};
 
 MObject RigSimulationNode::m_minGradSize;
@@ -469,7 +467,13 @@ bool RigSimulationNode::resetRig()
 	// 初始化结果记录器
 	int curFrame = getCurFrame();
 	int totPnt = m_rigMesh->getNTotPnt();
-	m_recorder.init(curFrame, totPnt*3, nValidParam);
+	vector<double> pnts;
+	m_rigMesh->getMeshPntPos(pnts);
+	m_recorder.init(
+		curFrame, totPnt*3, nValidParam, 
+		m_rigMesh->getInternalPntIdx(), m_rigMesh->getSurfacePntIdx(),
+		pnts);
+
 	return true;
 }
 
@@ -687,6 +691,70 @@ bool RigSimulationNode::testGrad( double noiseN, double noiseP )
 	m_rigMesh->testCurFrameGrad(lastStatus, curStatus, noiseN, noiseP);
 	return true;
 }
+
+bool RigSimulationNode::saveSimulationData( const char* fileName )
+{
+	//MStatus s;
+	//MPlug pathPlug = Global::getPlug(this, m_savePathName[0]);
+	//MString path = pathPlug.asString();
+	return m_recorder.saveToFile(fileName);
+}
+
+bool RigSimulationNode::getInitParam( EigVec& p )
+{
+	MStatus s;
+	int paramLength = m_recorder.getParamVecLength();
+	int pntLength = m_recorder.getPointVecLength();
+
+	if (paramLength <= 0 || pntLength <= 0)
+		return false;
+
+	p.resize(paramLength);
+	MPlug paramArrayPlug = Global::getPlug(this, m_initParamName[0]);
+	for (int ithParam = 0; ithParam < paramLength; ++ithParam)
+	{
+		MPlug paramPlug = paramArrayPlug.elementByLogicalIndex(ithParam,&s);
+		if (!s)
+			return false;
+		paramPlug.getValue(p[ithParam]);
+	}
+	return true;
+}
+
+bool RigSimulationNode::staticStepRig()
+{
+	if (!m_rig || !m_rigMesh || !m_solver)
+		return false;
+	// 获得上一帧状态
+	int curFrame = getCurFrame();
+	RigStatus s;
+	bool res = m_recorder.getStatus(curFrame-1, s);
+	if (!res)
+		res =getInitStatus(s);
+	if (!res)
+		return false;
+
+	// 设置导数步长和终止条件
+	updateDeriStepSize();		
+	MPlug maxIterPlug = Global::getPlug(this, m_maxIterName[0]);
+	int maxIter = maxIterPlug.asInt();
+
+	// 求解平衡位置
+	EigVec p;
+	if (!getInitParam(p))
+		return false;
+	EigVec q;
+	const EigVec* initQ = &s.getQ();		// 以上一帧的位置开始迭代，加快速度
+	if(!m_rigMesh->computeStaticPos(p, 0, q, maxIter, initQ))
+		return false;
+
+	// 记录结果
+	double dt = m_rigMesh->getStepTime();
+	EigVec v = (q - s.getQ()) / dt;
+	EigVec a = (v - s.getV()) / dt;
+	return m_recorder.setStatus(curFrame, RigStatus(q,v,a,p));
+}
+
 
 
 

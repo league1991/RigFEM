@@ -28,20 +28,24 @@ public:
 	// 模拟相关函数
 	void				clearRig();
 	bool				resetRig();
-	bool				stepRig();
+	bool				stepRig();					// 动态模拟
+	bool				staticStepRig();			// 静态模拟
 	MStatus				setParamPlug( const double* param, int nParam);
 
+
 	// 用于测试
-	void				testRig();
-	// 测试当前帧的Hessian
-	bool				testHessian(double noiseN, double noiseP);
+	void				testRig();	
+	bool				testHessian(double noiseN, double noiseP);					// 测试当前帧的Hessian
 	bool				testGrad(double noiseN, double noiseP);
 
+	// 保存数据
+	bool				saveSimulationData(const char* fileName);
 private:
 	
 	int					getNumParam();			// 获取当前有效的参数个数
 	MMatrix				getMatrix();
 	bool				getInitStatus(RigFEM::RigStatus& s);
+	bool				getInitParam(EigVec& p);
 	int					getCurFrame();
 	MStatus				setParamToInit();		// 设置参数为初始参数
 	void				drawIcon();
@@ -51,9 +55,9 @@ private:
 
 	MBoundingBox		m_box;
 
-	static MObject		m_initParam;
-	static MObject		m_param;
-	static MObject		m_mesh;
+	static MObject		m_initParam;			// 参数初始值
+	static MObject		m_param;				// 参数值
+	static MObject		m_mesh;					// 表面网格
 	static MObject      m_transformMatrix;		// mesh transform matrix
 	static MObject		m_tetEdgeRatio;			// 体网格化参数，四面体边比例
 	static MObject		m_tetMaxVolume;			// 体网格化参数，四面体最大体积
@@ -62,10 +66,12 @@ private:
 	static MObject		m_density;				// 密度
 	static MObject		m_timeStep;				// 时间步长
 
+	// 牛顿法参数
 	static MObject		m_deriStep;				// 参数求导时的有限差商大小
 	static MObject		m_maxIter;				// 最大迭代次数
 	static MObject		m_minStepSize;			// 迭代的最小步长，若步长小于此值，终止迭代
 	static MObject		m_minGradSize;			// 最小的梯度值，如梯度小于此值，终止迭代
+
 
 	static const char*  m_initParamName[2];
 	static const char*  m_paramName[2];

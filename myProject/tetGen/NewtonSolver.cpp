@@ -316,8 +316,8 @@ bool RigFEM::NewtonSolver::step()
 
 		EigVec   b2= -Gn - Hnp * dP;
 		dN= solver.solve(b2);
-		Global::showVector(Gp, "Gp");
-		Global::showVector(dP, "dP");
+		//Global::showVector(Gp, "Gp");
+		//Global::showVector(dP, "dP");
 		int t3 = clock();
 		//PRINT_F("compute dN, dP:%f",(t3-t2)/1000.f);
 
@@ -357,7 +357,7 @@ bool RigFEM::NewtonSolver::step()
 
 		PRINT_F("|dN|=%le |dP|=%le |resiN|¡Þ=%le |resiP|¡Þ=%le", dN.norm(), dP.norm(), resiN.maxCoeff(), resiP.maxCoeff());
 		PRINT_F("minStepSize = %e", m_minStepSize);
-		Global::showVector(p, "p");
+		//Global::showVector(p, "p");
 		
 		//Utilities::saveVector(n, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/N.txt");
 		//Utilities::saveVector(p, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/P.txt");

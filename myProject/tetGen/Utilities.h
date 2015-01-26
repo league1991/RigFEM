@@ -7,9 +7,6 @@ namespace RigFEM
 class Utilities
 {
 public:
-	Utilities(void);
-	~Utilities(void);
-
 	static void vegaSparse2Eigen(const SparseMatrix& src, EigSparse& tar, int nCols = -1);
 	
 	// 把vega矩阵的某个子矩阵转成Eigen矩阵，rowID，colID指定选中的行和列
@@ -59,7 +56,8 @@ public:
 		char digitStr[50];
 		for (int i = 0; i < vec.size(); ++i)
 		{
-			sprintf(digitStr, "%lf ", vec[i]);
+			double val = vec[i];
+			sprintf(digitStr, "%lf ", val);
 			str += digitStr;
 		}
 		str += "\n];\n";

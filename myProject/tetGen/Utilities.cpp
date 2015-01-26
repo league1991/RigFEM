@@ -2,13 +2,6 @@
 #include "Utilities.h"
 using namespace std;
 using namespace RigFEM;
-Utilities::Utilities(void)
-{
-}
-
-Utilities::~Utilities(void)
-{
-}
 
 void Utilities::vegaSparse2Eigen( const SparseMatrix& src, EigSparse& tar , int nCols)
 {

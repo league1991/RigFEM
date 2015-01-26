@@ -1202,3 +1202,87 @@ bool RiggedMesh::testCurFrameGrad( RigStatus& lastFrame, RigStatus& curFrame, do
 	PRINT_F("\n");
 	return true;
 }
+
+void RigFEM::RiggedMesh::getMeshPntPos( vector<double>& pnts ) const
+{
+	pnts.clear();
+	if (m_nTotPnt == 0)
+		return;
+	pnts.resize(m_nTotPnt*3);
+
+	for (int i = 0; i < m_nTotPnt; ++i)
+	{
+		Vec3d v = *m_tetMesh->getVertex(i);
+		pnts[i*3+0] = v[0];
+		pnts[i*3+1] = v[1];
+		pnts[i*3+2] = v[2];
+	}
+}
+
+bool RigFEM::RiggedMesh::computeStaticPos( const EigVec& p, double t, EigVec& q, int maxIter /*= 20*/, const EigVec* initQ /*= NULL*/ )
+{
+	if (p.size() != m_nParam || (initQ && initQ->size() != m_nTotPnt*3))
+		return false;
+
+	PRINT_F("compute static position");
+	if(!m_tangentStiffnessMatrix)
+		m_forceModel->GetTangentStiffnessMatrixTopology(&m_tangentStiffnessMatrix);
+
+	EigVec force(m_nTotPnt*3);
+	q = initQ ? *initQ : EigVec::Zero(m_nTotPnt*3);
+	computeQ(&p[0], t, &q[0]);
+
+	vector<int> nIdx(m_nIntPnt * 3);
+	for (int i = 0; i < m_nIntPnt; ++i)
+	{
+		nIdx[i*3]   = 3 * m_intPntIdx[i];
+		nIdx[i*3+1] = 3 * m_intPntIdx[i] + 1;
+		nIdx[i*3+2] = 3 * m_intPntIdx[i] + 2;
+	}
+
+	for (int iter = 0; iter < maxIter; ++iter)
+	{
+		// 计算受力和切向刚度矩阵
+		m_forceModel->GetForceAndMatrix(&q[0], &force[0], m_tangentStiffnessMatrix);
+		EigSparse tangentStiffnessMat;
+		Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, nIdx, nIdx, tangentStiffnessMat);
+
+		// 求解新位置
+		EigVec intForce(3 * m_nIntPnt);
+		for (int ithIntPnt = 0; ithIntPnt < m_nIntPnt; ++ithIntPnt)
+		{
+			int idx = m_intPntIdx[ithIntPnt] * 3;
+			intForce[ithIntPnt*3+0] = -force[idx+0];
+			intForce[ithIntPnt*3+1] = -force[idx+1];
+			intForce[ithIntPnt*3+2] = -force[idx+2];
+		}
+		Eigen::SuperLU<EigSparse> solver;
+		solver.compute(tangentStiffnessMat);
+		if(solver.info()!=Eigen::Success) 
+		{
+			PRINT_F("LU factorization FAILED!\n");
+			return false;
+		}
+		EigVec dN = solver.solve(intForce);
+
+		double intPntLengthSq = 0;				// 内部点向量长度平方
+		for (int ithN = 0; ithN < m_intPntIdx.size(); ++ithN)
+		{
+			int intIdx = m_intPntIdx[ithN];
+			double* pDq = &dN[ithN*3];
+			q[intIdx*3 + 0] += pDq[0];
+			q[intIdx*3 + 1] += pDq[1];
+			q[intIdx*3 + 2] += pDq[2];
+			intPntLengthSq += pDq[0]*pDq[0] + pDq[1]*pDq[1] + pDq[2]*pDq[2];
+		}
+		intPntLengthSq = sqrt(intPntLengthSq);
+
+		PRINT_F("%d th iteration, |dq| = %lf", iter, intPntLengthSq);
+		if (intPntLengthSq < 1e-3)
+		{
+			break;
+		}
+
+	}
+	return true;
+}

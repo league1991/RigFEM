@@ -13,7 +13,10 @@ global proc initSimulator(string $nodeName)
 	// execute
 	rigSimulate -init -name $nodeName;
 }
-global proc execSimulator(string $nodeName)
+// type: simulation type 
+// 0		dynamic simulation
+// 1		static simulation
+global proc execSimulator(string $nodeName, int $type)
 {	
 	int  $length = `intSliderGrp   -query -value simLengthSlider`;
 	
@@ -37,13 +40,27 @@ global proc execSimulator(string $nodeName)
         progressBar -edit -step 1 $gMainProgressBar;
 			
 		currentTime $t;
-		int $res = `rigSimulate -step -name $nodeName`;
+		int $res;
+		switch($type)
+		{
+		case 0:
+			$res = `rigSimulate -step -name $nodeName`;
+			break;
+		case 1:
+			$res = `rigSimulate -stepStatic -name $nodeName`;
+			break;
+		}
 		if($res == 0)
 			break;
 	}
 	
 	// delete progress bar
     progressBar -edit  -endProgress $gMainProgressBar;
+}
+global proc saveSimulationData(string $nodeName)
+{
+	string $filePath = `fileDialog -m 1`;
+	int $res = `rigSimulate -name $nodeName -save $filePath`;
 }
 global proc initSimulatorControl(string $attrName)
 {
@@ -56,7 +73,9 @@ global proc initSimulatorControl(string $attrName)
 						-fieldMinValue  1 -fieldMaxValue  10000
 						-value 10
 						simLengthSlider;
-		button -label "Simulate" -c ("execSimulator " + $nodeName) simButton;
+		button -label "Simulate" -c ("execSimulator " + $nodeName + " 0") simButton;
+		button -label "Static Simulate" -c ("execSimulator " + $nodeName + " 1") staticSimButton;
+		button -label "Save Simulation Result" -c ("saveSimulationData " + $nodeName) saveButton;
 	setUITemplate -ppt;
 }
 
@@ -64,7 +83,9 @@ global proc modifySimulatorControl(string $attrName)
 {
 	string $nodeName = `match "[^\.]*" $attrName`;	
 	button -e -c ("initSimulator " + $nodeName) initButton;	
-	button -e -c ("execSimulator " + $nodeName) simButton;
+	button -e -c ("execSimulator " + $nodeName + " 0") simButton;
+	button -e -c ("execSimulator " + $nodeName + " 1") staticSimButton;
+	button -e -c ("saveSimulationData " + $nodeName) saveButton;
 }
 
 global proc AErigSimulatorTemplate(string $nodeName)
@@ -82,7 +103,8 @@ global proc AErigSimulatorTemplate(string $nodeName)
 			editorTemplate -addControl "derivativeStep";
 			editorTemplate -addControl "inverseGradTolerance";
 			editorTemplate -addControl "inverseStepTolerance";
-			editorTemplate -addControl "maxIteration";			
+			editorTemplate -addControl "maxIteration";
+			editorTemplate -addControl "savePath";
 			editorTemplate -callCustom "initSimulatorControl" "modifySimulatorControl" "noAttr";	
 		editorTemplate -endLayout;
 		

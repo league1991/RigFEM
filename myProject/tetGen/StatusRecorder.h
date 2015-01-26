@@ -1,11 +1,18 @@
 #pragma once
 
 namespace RigFEM
-{
-	
+{	
 	class RigStatus
 	{
 	public:
+		enum Status
+		{
+			// 各种状态的枚举类型 
+			STATUS_Q,
+			STATUS_V,
+			STATUS_A,
+			STATUS_P
+		};
 		RigStatus(){}
 		RigStatus(	const EigVec& q, 
 					const EigVec& v,
@@ -21,6 +28,7 @@ namespace RigFEM
 		const EigVec& getV()const{return m_v;}
 		const EigVec& getA()const{return m_a;}
 		const EigVec& getParam()const{return m_param;}
+		const EigVec* getByName(Status s)const;
 
 		bool matchLength(int pntVecLength, int paramVecLength)const;
 	private:
@@ -34,16 +42,26 @@ namespace RigFEM
 		~StatusRecorder(void);
 
 		void clear(){m_statusList.clear();}
-		void init(int startFrame, int pntLength, int paramLength);
+		void init( int startFrame, int pntLength, int paramLength , 
+			const vector<int>& intPntIdx, const vector<int>& surfPntIdx,
+			const vector<double>& initPntPos);
 		bool appendStatus(const RigStatus& s);
 		bool getStatus(int ithFrame, RigStatus& s)const;
 		bool setStatus(int ithFrame, const RigStatus& s);
+		void setPntIdx(const vector<int>& intPntIdx, const vector<int>& surfPntIdx);
+
 		int  getPointVecLength()const{return m_pntLength;}
 		int  getParamVecLength()const{return m_paramLength;}
+
+		bool saveToFile(const char* fileName)const;
 	private:
+		void state2Str(RigStatus::Status s, const char* name, string& str)const;
+		
 		int				  m_pntLength;
 		int				  m_paramLength;
 		int				  m_startFrame;
 		vector<RigStatus> m_statusList;
+		vector<int>		  m_intPntIdx, m_surfPntIdx;
+		vector<double>	  m_initPntPos;
 	};
 }

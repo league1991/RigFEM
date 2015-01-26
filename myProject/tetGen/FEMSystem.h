@@ -20,13 +20,16 @@ public:
 	bool showStatus( RigStatus& s , double* bbox = NULL);
 	void computeRig();
 
+	// 各种计算函数
 	// 计算给定状态x = [n，p] 以及时间参数param下的函数值，以及梯度
 	bool computeValueAndGrad(const EigVec& x, const EigVec& param, double* v, EigVec* grad);
-
 	// 根据给定的内部点的偏移量n以及参数值p计算函数值、梯度以及Hessian矩阵
 	double computeValue(const EigVec& n, const EigVec& p, double t);
 	bool computeGradient(const EigVec& n, const EigVec& p, double t, EigVec& gn, EigVec& gp);
 	bool computeHessian(const EigVec& n, const EigVec& p, double t, EigSparse& Hnn, EigDense& Hnp, EigDense& Hpn, EigDense* pHpp = NULL);		// pHpp 若为NULL，不计算
+	// 给定参数以确定表面点位置，计算内部点受力平衡的位置
+	// initN可以指定初始迭代位置
+	bool computeStaticPos(const EigVec& p, double t, EigVec& q, int maxIter = 20, const EigVec* initQ = NULL);
 
 	// 各种状态变量
 	// 获得当前各个自由度的状态
@@ -34,12 +37,16 @@ public:
 	// 更新各个自由度的状态，同时更新的有顶点位置、速度、加速度
 	void setDof(EigVec&n, EigVec&p, bool proceedTime = true);
 	double getCurTime(){return m_t;}
-
 	void setStepTime(double dt){m_h = dt;}
+	double getStepTime()const{return m_h;}
 
 	// 返回封装的状态
 	RigStatus getStatus()const;
 	bool setStatus(const RigStatus& s);
+
+	const vector<int>& getInternalPntIdx()const{return m_intPntIdx;}
+	const vector<int>& getSurfacePntIdx()const{return m_surfPntIdx;}
+	void getMeshPntPos(vector<double>& pnts)const;
 
 	int getNTotPnt()const{return m_nTotPnt;}
 
@@ -80,38 +87,6 @@ private:
 	double computeValue(const EigVec& q);
 
 	bool getN(RigStatus& s, EigVec& n);
-
-	bool computeHnn(vector<int>& nIdx, vector<int>& sIdx)
-	{
-		if (!m_tangentStiffnessMatrix)
-			return false;
-		/*
-		if (!m_HnnCache)
-		{
-			m_HnnCache = new SparseMatrix();
-			SparseMatrix& Hnn = *m_HnnCache;
-
-			SparseMatrix dFnn(*m_tangentStiffnessMatrix);
-			dFnn.RemoveRowsColumns(sIdx.size(), &sIdx[0]);
-			Utilities::vegaSparse2Eigen(dFnn, Hnn, m_nIntPnt*3);
-			Hnn *= -1.0;
-
-			for (int ithInt = 0; ithInt < m_nIntPnt; ++ithInt)
-			{
-				int begIdx = ithInt*3;
-				double massTerm = m_mass[m_intPntIdx[ithInt]] / (m_h * m_h);
-				Hnn.coeffRef(begIdx, begIdx) += massTerm;	begIdx++;
-				Hnn.coeffRef(begIdx, begIdx) += massTerm;	begIdx++;
-				Hnn.coeffRef(begIdx, begIdx) += massTerm;
-			}
-		}
-		else
-		{
-
-		}*/
-		return true;
-	}
-
 
 	// Tengen生成的四面体网格数据,这些数据一旦生成，在模拟过程中除坐标值外不再修改
 	tetgenio		m_out;

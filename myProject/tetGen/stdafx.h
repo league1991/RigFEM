@@ -36,6 +36,7 @@
 // Eigen
 #include "Eigen/sparse"
 #include "Eigen/LU"
+#include "Eigen/QR"
 #include "Eigen/SuperLUSupport"
 
 typedef Eigen::SparseMatrix<double> EigSparse;
