@@ -1,37 +1,39 @@
-﻿========================================================================
-    动态链接库：RigPlugin 项目概述
-========================================================================
+nnls - Alternative to lsqnonneg: can be faster on large problems,
+ improved convergence control, optional restart vector
 
-应用程序向导已为您创建了此 RigPlugin DLL。
+Solves non negative least squares:
+    min wrt x: (d-Cx)'*(d-Cx) subject to: x>=0
 
-本文件概要介绍组成 RigPlugin 应用程序的
-的每个文件的内容。
+This version of nnls aims to solve convergance problems that can occur 
+with the 2011-2012 version of lsqnonneg, and provides a fast solution of 
+large problems. Includes an option to give initial positive terms for x 
+for faster solution of iterative problems using nnls. 
+
+For some large problems nnls can be faster than lsqnonneg, 
+see test file (nnlstest.m).
 
 
-RigPlugin.vcproj
-    这是使用应用程序向导生成的 VC++ 项目的主项目文件，
-    其中包含生成该文件的 Visual C++ 的版本信息，以及有关使用应用程序向导选择的平台、配置和项目功能的信息。
+Simple usage:  x=nnls(C,d)
 
-RigPlugin.cpp
-    这是主 DLL 源文件。
+[x,w,info]=nnls(C,d,opts)
+ C    Coefficient matrix
+ d    Rhs vector
+ opts Struct containing options: (optional)
+       .Accy  0 fast version, 1 refines final value (default), 
+                2 uses accurate steps but  very slow on large cases, 
+                faster on small cases, result usually identical to 1
+       .Order True or [], or order to initially include positive terms
+                if included will supply info.Order, if x0 available use 
+                find(x0>0), but best saved from previous run of nnls
+       .Tol   Tolerance test value, default zero, use multiple of eps
+       .Iter  Maximum number of iterations, should not be needed.
 
-	此 DLL 在创建时不导出任何符号。因此，在生成此 DLL 时
-	将不会产生 .lib 文件。如果希望此项目
-	成为其他某个项目的项目依赖项，则需要
-	添加代码以从 DLL 导出某些符号，
-	以便产生一个导出库，或者，也可以在项目“属性页”对话框中的
-	“链接器”文件夹中，将“常规”属性页上的
-	“忽略输入库”属性设置为“是”。
+ x    Positive solution vector x>=0
+ w    Lagrange multiplier vector w(x==0)<= approx zero
+ info Struct with extra information: 
+       .iter  Number of iterations used
+       .wsc0  Estimated size of errors in w
+       .wsc   Maximum of test values for w
+       .Order Order variables used, use to restart nnls with opts.Order
 
-/////////////////////////////////////////////////////////////////////////////
-其他标准文件：
-
-StdAfx.h, StdAfx.cpp
-    这些文件用于生成名为 RigPlugin.pch 的预编译头 (PCH) 文件和名为 StdAfx.obj 的预编译类型文件。
-
-/////////////////////////////////////////////////////////////////////////////
-其他注释：
-
-应用程序向导使用“TODO:”注释来指示应添加或自定义的源代码部分。
-
-/////////////////////////////////////////////////////////////////////////////
+Examples in nnlstest.m
