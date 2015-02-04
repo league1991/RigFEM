@@ -120,6 +120,7 @@ typedef Eigen::VectorXd				EigVec;
 #include "NewtonSolver.h"
 #include "StatusRecorder.h"
 #include "FEMSystem.h"
+#include "RigSimulator.h"
 
 #include "globals.h"
 #include "GeneralRig.h"

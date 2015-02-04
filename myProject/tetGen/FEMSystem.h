@@ -39,6 +39,7 @@ public:
 	double getCurTime(){return m_t;}
 	void setStepTime(double dt){m_h = dt;}
 	double getStepTime()const{return m_h;}
+	RigBase* getRigObj(){return m_transRig;}
 
 	// 返回封装的状态
 	RigStatus getStatus()const;
@@ -47,7 +48,6 @@ public:
 	const vector<int>& getInternalPntIdx()const{return m_intPntIdx;}
 	const vector<int>& getSurfacePntIdx()const{return m_surfPntIdx;}
 	void getMeshPntPos(vector<double>& pnts)const;
-
 	int getNTotPnt()const{return m_nTotPnt;}
 
 	// 各种测试函数，调试专用
@@ -64,10 +64,8 @@ public:
 	bool testCurFrameHessian( RigStatus& lastFrame, RigStatus& curFrame, double noiseN = 1.0, double noiseP=1.0);
 	bool testCurFrameGrad( RigStatus& lastFrame, RigStatus& curFrame, double noiseN = 1.0, double noiseP = 1.0);
 
-	// rig数据
-	RigBase*	m_transRig;
 
-private:
+protected:
 	struct PntPair
 	{
 		Vec3d m_pnt;
@@ -92,6 +90,8 @@ private:
 	tetgenio		m_out;
 	vector<int>		m_surfPntIdx;						// 来自m_in的顶点（视为表面点）在m_out的索引
 	vector<int>		m_intPntIdx;						// 新加入的顶点(视为内部点)在m_out的索引
+	vector<int>		m_surfDofIdx;						// 表面点各个自由度（xyz）索引
+	vector<int>		m_intDofIdx;						// 内部点各个自由度（xyz）索引
 	int				m_nTotPnt;							// 总点数
 	int				m_nIntPnt;							// 内部点（也就是自由运动的点）个数
 	int				m_nSurfPnt;							// 表面点（也就是被参数控制的点）个数
@@ -101,6 +101,9 @@ private:
 	// 各种Vega数据结构
 	ModelWrapper*			m_modelwrapper;
 	ForceModel*				m_forceModel;
+
+	// rig数据
+	RigBase*				m_transRig;					// rig 数据
 
 	// 以下状态变量长度为点数*3, 
 	// 在迭代过程中，这些值保持为上一帧的值，直到新一帧的值计算出来后才更新
@@ -114,16 +117,40 @@ private:
 	double					m_t;						// 当前时刻
 };
 
+class RiggedSkinMesh:public RiggedMesh
+{
+public:
+	void setWeight(EigSparse& sparse);
+	// 调用了init之后再被调用
+	bool setWeight(const char* weightFile);
+
+	void getDof( EigVec& p );
+	void setDof( EigVec& p, bool proceedTime = true );
+
+	// 各种计算函数
+	// 计算给定状态x = p 以及时间参数param下的函数值，以及梯度
+	bool computeValueAndGrad(const EigVec& x, const EigVec& param, double* v = NULL, EigVec* grad = NULL);
+	bool computeHessian(const EigVec&x, const EigVec& param, EigDense& H);
+
+	bool testCurFrameGrad(RigStatus& lastFrame, RigStatus& curFrame, double noiseP = 1.0);
+	bool testCurFrameHessian( RigStatus& lastFrame, RigStatus& curFrame, double noiseP=1.0);
+protected:
+	bool computeSkinQ(const double* p, double t, double* q);
+
+	EigSparse				m_weightMat;				// 权重矩阵，大小为（内部点数*3, 表面点数*3）
+	EigSparse				m_weightMatTran;			// 权重矩阵的转置
+};
+
 class FEMSystem
 {
 public:
-	void init(){m_mesh.init();m_solver.setMesh(&m_mesh);}
+	void init();
 	void show(){m_mesh.show();}
 	void saveResult(const char* fileName);
 	void clearResult();
 	void step();
 	RiggedMesh				m_mesh;						// 体网格对象
-	NewtonSolver			m_solver;					// 牛顿法求解器
+	PointParamSolver			m_solver;					// 牛顿法求解器
 };
 
 }

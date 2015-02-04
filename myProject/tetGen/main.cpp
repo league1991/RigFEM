@@ -257,7 +257,7 @@ void keyFcn(GLubyte key,GLint xMouse,GLint yMouse)
 		break;
 	case '[':
 	case ']':
-		TransformRig& rig =	*(TransformRig*)g_fem.m_mesh.m_transRig;
+		TransformRig& rig =	*(TransformRig*)g_fem.m_mesh.getRigObj();
 		double dir = key == ']' ? 1.f : -1.f;
 		Vec3d trans = rig.getTranslation() + Vec3d(0.0) * dir * 0;
 		Vec3d scale = rig.getScale() + Vec3d(0.01) * dir * 0;

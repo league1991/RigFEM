@@ -20,7 +20,11 @@ const char* RigSimulationNode::m_deriStepName[2]={"derivativeStep", "dStep"};   
 const char* RigSimulationNode::m_minGradSizeName[2] = {"inverseGradTolerance", "invGradSize"};
 const char* RigSimulationNode::m_minStepSizeName[2] = {"inverseStepTolerance", "invStepSize"};
 const char* RigSimulationNode::m_maxIterName[2] = {"maxIteration", "maxIter"};
+const char* RigSimulationNode::m_simTypeName[2] = {"simulationType", "simType"};
+const char* RigSimulationNode::m_weightPathName[2]={"weightPath","wPath"};
 
+MObject RigSimulationNode::m_weightPath;
+MObject RigSimulationNode::m_simType;
 MObject RigSimulationNode::m_minGradSize;
 MObject RigSimulationNode::m_minStepSize;
 MObject RigSimulationNode::m_maxIter; 
@@ -36,7 +40,10 @@ MObject	RigSimulationNode::m_nu;					// 控制不同轴向变形相互影响的参数
 MObject	RigSimulationNode::m_density;				// 密度
 MObject	RigSimulationNode::m_timeStep;				// 时间步长
 
-RigSimulationNode::RigSimulationNode(void):m_box(MPoint(-1.1,-0.5,-1.1), MPoint(4.1,0.5,1.1)),m_rigMesh(NULL), m_rig(NULL), m_solver(NULL)
+RigSimulationNode::RigSimulationNode(void):
+m_box(MPoint(-1.1,-0.5,-1.1), MPoint(4.1,0.5,1.1)),
+m_simTypeFlag(RigSimulationNode::SIM_STANDARD),
+m_simulator(NULL)
 {
 }
 
@@ -63,7 +70,7 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 	drawIcon();
 
 	m_box = MBoundingBox(MPoint(-1.1,-0.5,-1.1), MPoint(4.1,0.5,1.1));
-	if (m_rigMesh)
+	if (m_simulator)
 	{
 		int curFrame = getCurFrame();
 
@@ -73,25 +80,23 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
 		glMultMatrixd(&matBuf[0][0]);
-		
-		RigStatus status;
-		bool res = m_recorder.getStatus(curFrame, status);
-		if (!res)
-			res = getInitStatus(status);
+
+		// 更新参数值
+		EigVec p;
+		if(m_simulator->getParam(curFrame, p))
+			setParamPlug(&p[0], p.size());
+		else
+			setParamToInit();
+		double bbox[6];
+		bool res = m_simulator->showStatus(curFrame, bbox);
 		if (res)
 		{
-			double bbox[6];
-			m_rigMesh->showStatus(status, bbox);
-
 			// 更新包围盒
 			double xformBox[6];
 			Utilities::transformBBox(bbox, bbox+3, matBuf, xformBox, xformBox+3);
 			m_box.expand(MPoint(xformBox[0], xformBox[1], xformBox[2]));
 			m_box.expand(MPoint(xformBox[3], xformBox[4], xformBox[5]));
  
-			// 更新参数值
-			const EigVec& p = status.getParam();
-			setParamPlug(&p[0], p.size());
 		}
 
 		glPopMatrix();
@@ -111,6 +116,7 @@ MStatus RigSimulationNode::initialize()
 	MFnNumericAttribute nAttr;
 	MFnMatrixAttribute  mAttr;
 	MFnTypedAttribute   tAttr;
+	MFnEnumAttribute	eAttr;
 
 	m_param = nAttr.create(m_paramName[0], m_paramName[1], MFnNumericData::kDouble,0, &s);
 	nAttr.setKeyable(false);
@@ -259,6 +265,22 @@ MStatus RigSimulationNode::initialize()
 	mAttr.setKeyable(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
+	m_simType = eAttr.create(m_simTypeName[0], m_simTypeName[1]);
+	eAttr.addField("Standard", RigSimulationNode::SIM_STANDARD);
+	eAttr.addField("Skin",   RigSimulationNode::SIM_SKIN);
+	eAttr.setHidden(false);
+	eAttr.setReadable(true);
+	eAttr.setWritable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_weightPath = tAttr.create(m_weightPathName[0], m_weightPathName[1], MFnData::kString);
+	tAttr.setKeyable(true);
+	tAttr.setStorable(true);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setUsedAsFilename(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
 	s = addAttribute(m_param);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_initParam);
@@ -286,6 +308,10 @@ MStatus RigSimulationNode::initialize()
 	s = addAttribute(m_minGradSize);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_minStepSize);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_simType);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_weightPath);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	s = attributeAffects(m_initParam, m_param);
@@ -321,20 +347,11 @@ MStatus RigSimulationNode::compute( const MPlug& plug, MDataBlock& data )
 	{
 		// 设置当前状态的参数值
 		int curFrame = getCurFrame();
-		RigStatus status;
-		bool res = m_recorder.getStatus(curFrame, status);
-		if (!res)
-			res = getInitStatus(status);
-		if (res)
-		{	// 已经初始化，但是当前帧不在模拟数据范围内
-			const EigVec& p = status.getParam();
-			setParamPlug(&p[0], p.size());	 
-		}
+		EigVec p;
+		if(m_simulator && m_simulator->isReady() && m_simulator->getParam(curFrame, p))
+			setParamPlug(&p[0], p.size());
 		else
-		{
-			// 没有初始化，把输出参数直接设置为与initParam一样
 			setParamToInit();
-		}
 	
 	}
 	data.setClean(plug);
@@ -387,13 +404,8 @@ int RigSimulationNode::getNumParam()
 
 void RigSimulationNode::clearRig()
 {
-	delete m_rig;
-	m_rig = NULL;
-	delete m_solver;
-	m_solver = NULL;
-	delete m_rigMesh;
-	m_rigMesh = NULL;
-	m_recorder.clear();
+	delete m_simulator;
+	m_simulator = NULL;
 }
 
 bool RigSimulationNode::resetRig()
@@ -425,14 +437,6 @@ bool RigSimulationNode::resetRig()
 		return false;
 	}
 
-	// 初始化rig对象
-	MPlug deriStepPlug = Global::getPlug(this, m_deriStepName[0]);
-	m_rig = new RigFEM::GeneralRig(this, nValidParam, nSurfVtx);
-	double deriStepVal = 1e-3;
-	deriStepPlug.getValue(deriStepVal);
-	m_rig->setDelta(deriStepVal);
-	m_rig->fetchParamFromNode();
-
 	// 初始化RiggedMesh对象
 	MPlug tetEdgeRatioPlug = Global::getPlug(this, m_tetEdgeRatioName[0]);
 	MPlug tetMaxVolumePlug = Global::getPlug(this, m_tetMaxVolumeName[0]);
@@ -440,19 +444,56 @@ bool RigSimulationNode::resetRig()
 	MPlug nuPlug = Global::getPlug(this, m_nuName[0]);
 	MPlug densityPlug = Global::getPlug(this, m_densityName[0]);
 	MPlug stepTimePlug = Global::getPlug(this, m_timeStepName[0]);
+	MPlug weightPathPlug = Global::getPlug(this, m_weightPathName[0]);
+
 	tetgenio tetMesh;
 	MMatrix mat = getMatrix();
 	bool res = MS::kSuccess == Global::maya2TetgenMesh(meshObj, tetMesh, mat);
+	m_simTypeFlag = (SimulationType)Global::getPlug(this, m_simTypeName[0]).asShort();
+	MString weightStr = weightPathPlug.asString();
+	EigVec initParam;
+	int curFrame = getCurFrame();
+	getInitParam(initParam);
 	if (res)
 	{
-		m_rigMesh = new RigFEM::RiggedMesh();
-		res = m_rigMesh->init(	tetMesh, m_rig, 
-								tetMaxVolumePlug.asDouble(), 
-								tetEdgeRatioPlug.asDouble(), 
-								youngModulusPlug.asDouble(), 
-								nuPlug.asDouble(), 
-								densityPlug.asDouble());
-		m_rigMesh->setStepTime(stepTimePlug.asDouble());
+		switch(m_simTypeFlag)
+		{
+		case RigSimulationNode::SIM_STANDARD:
+			{
+				RigFEM::RigSimulator* sim = new RigFEM::RigSimulator();
+				res &= sim->init(
+					tetMesh, this,
+					initParam,
+					curFrame,
+					tetMaxVolumePlug.asDouble(), 
+					tetEdgeRatioPlug.asDouble(), 
+					youngModulusPlug.asDouble(), 
+					nuPlug.asDouble(), 
+					densityPlug.asDouble(),
+					stepTimePlug.asDouble()
+					);
+				m_simulator = sim;
+			}
+			break;
+		case RigSimulationNode::SIM_SKIN:
+			{
+				RigFEM::RigSkinSimulator* sim = new RigFEM::RigSkinSimulator();
+				res &= sim->init(
+					tetMesh, this,
+					initParam,
+					weightStr.asChar(),
+					curFrame,
+					tetMaxVolumePlug.asDouble(), 
+					tetEdgeRatioPlug.asDouble(), 
+					youngModulusPlug.asDouble(), 
+					nuPlug.asDouble(), 
+					densityPlug.asDouble(),
+					stepTimePlug.asDouble()
+					);
+				m_simulator = sim;
+			}
+			break;
+		}
 	}
 
 	if (!res)
@@ -462,18 +503,11 @@ bool RigSimulationNode::resetRig()
 		return false;
 	}
 
-	m_solver = new RigFEM::NewtonSolver(m_rigMesh);
-
-	// 初始化结果记录器
-	int curFrame = getCurFrame();
-	int totPnt = m_rigMesh->getNTotPnt();
-	vector<double> pnts;
-	m_rigMesh->getMeshPntPos(pnts);
-	m_recorder.init(
-		curFrame, totPnt*3, nValidParam, 
-		m_rigMesh->getInternalPntIdx(), m_rigMesh->getSurfacePntIdx(),
-		pnts);
-
+	// 初始化rig对象
+	MPlug deriStepPlug = Global::getPlug(this, m_deriStepName[0]);
+	double deriStepVal = 1e-3;
+	deriStepPlug.getValue(deriStepVal);
+	m_simulator->setDeriStepSize(deriStepVal);
 	return true;
 }
 
@@ -488,97 +522,40 @@ MMatrix RigSimulationNode::getMatrix()
 
 bool RigSimulationNode::testHessian(double noiseN, double noiseP)
 {
-	if (!m_rig || !m_rigMesh || !m_solver)
+	if (!m_simulator || !m_simulator->isReady())
 		return false;
 
 	updateDeriStepSize();
 
 	// 设置当前帧状态
-	RigStatus lastStatus, curStatus;
 	int curFrame = getCurFrame();
-	bool res = m_recorder.getStatus(curFrame-1, lastStatus);
-	res&= m_recorder.getStatus(curFrame, curStatus);
-	if (!res)
-		return false;
-	m_rigMesh->testCurFrameHessian(lastStatus, curStatus, noiseN, noiseP);
-	return true;
+	return m_simulator->testHessian(curFrame);
 }
 bool RigSimulationNode::updateDeriStepSize()
 {
-	if(!m_rig)
+	if(!m_simulator || !m_simulator->isReady())
 		return false;
 	MPlug deriStepPlug = Global::getPlug(this, m_deriStepName[0]);
 	double deriStepVal = 1e-3;
 	deriStepPlug.getValue(deriStepVal);
-	m_rig->setDelta(deriStepVal);
+	m_simulator->setDeriStepSize(deriStepVal);
 	return true;
 }
 bool RigSimulationNode::stepRig()
 {
-	if (!m_rig || !m_rigMesh || !m_solver)
+	if (!m_simulator || !m_simulator->isReady())
 		return false;
 
 	int curFrame = getCurFrame();
 
 	// 设置上一帧状态
-	RigStatus s;
-	bool res = m_recorder.getStatus(curFrame-1, s);
-	if (!res)
-		res = getInitStatus(s);
-	if (res)
-	{
-		if (!m_rigMesh->setStatus(s))
-		{
-			PRINT_F("status invalid");
-			return false;
-		}
-	}
-
-	if(!m_rig)
-		return false; 
-  
-	
 	updateDeriStepSize();		// 设置导数步长
 	updateTerminationCond();	// 设置终止条件
 
 	// 模拟
-	if(!m_solver->step())
-	{
-		PRINT_F("simulation failed.");
-		return false;
-	}
-
-	// 记录结果
-	s = m_rigMesh->getStatus();
-	return m_recorder.setStatus(curFrame, s);
+	return m_simulator->stepRig(curFrame);
 }
 
-bool RigSimulationNode::getInitStatus( RigStatus& status )
-{
-	MStatus s;
-	int paramLength = m_recorder.getParamVecLength();
-	int pntLength = m_recorder.getPointVecLength();
-
-	if (paramLength <= 0 || pntLength <= 0)
-		return false;
-
-	EigVec param(paramLength);
-	MPlug paramArrayPlug = Global::getPlug(this, m_initParamName[0]);
-	for (int ithParam = 0; ithParam < paramLength; ++ithParam)
-	{
-		MPlug paramPlug = paramArrayPlug.elementByLogicalIndex(ithParam,&s);
-		if (!s)
-			return false;
-		paramPlug.getValue(param[ithParam]);
-	}
-
-	EigVec q,v,a;
-	q.setZero(pntLength);
-	v.setZero(pntLength);
-	a.setZero(pntLength);
-	status = RigStatus(q,v,a,param);
-	return true;
-}
 
 int RigSimulationNode::getCurFrame()
 {
@@ -662,51 +639,48 @@ void RigSimulationNode::drawIcon()
 
 bool RigSimulationNode::updateTerminationCond()
 {
-	if (!m_solver)
+	if (!m_simulator || !m_simulator->isReady())
 		return false;
-	MPlug maxIterPlug = Global::getPlug(this, m_maxIterName[0]);
-	MPlug minGradPlug = Global::getPlug(this, m_minGradSizeName[0]);
-	MPlug minStepPlug = Global::getPlug(this, m_minStepSizeName[0]);
+	if (RigSimulator* sim = dynamic_cast<RigSimulator*>(m_simulator))
+	{
+		MPlug maxIterPlug = Global::getPlug(this, m_maxIterName[0]);
+		MPlug minGradPlug = Global::getPlug(this, m_minGradSizeName[0]);
+		MPlug minStepPlug = Global::getPlug(this, m_minStepSizeName[0]);
 
-	int maxIter = maxIterPlug.asInt();
-	double gradSize= 1.0 / minGradPlug.asDouble();
-	double stepSize= 1.0 / minStepPlug.asDouble();
-	m_solver->setTerminateCond(maxIter, stepSize, gradSize);
+		int maxIter = maxIterPlug.asInt();
+		double gradSize= 1.0 / minGradPlug.asDouble();
+		double stepSize= 1.0 / minStepPlug.asDouble();
+		NewtonSolver* solver = sim->getSolver();
+		if (solver)
+			solver->setTerminateCond(maxIter, stepSize, gradSize);
+	}
 	return true;
 }
 
 bool RigSimulationNode::testGrad( double noiseN, double noiseP )
 {
-	if (!m_rig || !m_rigMesh || !m_solver)
+	if (!m_simulator || !m_simulator->isReady())
 		return false;
 	updateDeriStepSize();
 
 	// 设置当前帧状态
-	RigStatus lastStatus, curStatus;
 	int curFrame = getCurFrame();
-	bool res = m_recorder.getStatus(curFrame-1, lastStatus);
-	res&= m_recorder.getStatus(curFrame, curStatus);
-	if (!res)
-		return false;
-	m_rigMesh->testCurFrameGrad(lastStatus, curStatus, noiseN, noiseP);
-	return true;
+	return m_simulator->testGradient(curFrame);
 }
 
 bool RigSimulationNode::saveSimulationData( const char* fileName )
 {
-	//MStatus s;
-	//MPlug pathPlug = Global::getPlug(this, m_savePathName[0]);
-	//MString path = pathPlug.asString();
-	return m_recorder.saveToFile(fileName);
+	if (!m_simulator || !m_simulator->isReady())
+		return false;
+	return m_simulator->saveResult(fileName);
 }
 
 bool RigSimulationNode::getInitParam( EigVec& p )
 {
 	MStatus s;
-	int paramLength = m_recorder.getParamVecLength();
-	int pntLength = m_recorder.getPointVecLength();
+	int paramLength = getNumParam();
 
-	if (paramLength <= 0 || pntLength <= 0)
+	if (paramLength <= 0)
 		return false;
 
 	p.resize(paramLength);
@@ -723,37 +697,19 @@ bool RigSimulationNode::getInitParam( EigVec& p )
 
 bool RigSimulationNode::staticStepRig()
 {
-	if (!m_rig || !m_rigMesh || !m_solver)
+	if (!m_simulator || !m_simulator->isReady())
 		return false;
-	// 获得上一帧状态
+
+	updateDeriStepSize();
+
 	int curFrame = getCurFrame();
-	RigStatus s;
-	bool res = m_recorder.getStatus(curFrame-1, s);
-	if (!res)
-		res =getInitStatus(s);
-	if (!res)
-		return false;
-
-	// 设置导数步长和终止条件
-	updateDeriStepSize();		
-	MPlug maxIterPlug = Global::getPlug(this, m_maxIterName[0]);
-	int maxIter = maxIterPlug.asInt();
-
-	// 求解平衡位置
-	EigVec p;
-	if (!getInitParam(p))
-		return false;
-	EigVec q;
-	const EigVec* initQ = &s.getQ();		// 以上一帧的位置开始迭代，加快速度
-	if(!m_rigMesh->computeStaticPos(p, 0, q, maxIter, initQ))
-		return false;
-
-	// 记录结果
-	double dt = m_rigMesh->getStepTime();
-	EigVec v = (q - s.getQ()) / dt;
-	EigVec a = (v - s.getV()) / dt;
-	return m_recorder.setStatus(curFrame, RigStatus(q,v,a,p));
+	EigVec initParam;
+	getInitParam(initParam);
+	m_simulator->staticStepRig(curFrame, initParam);
+	return true;
 }
+
+
 
 
 

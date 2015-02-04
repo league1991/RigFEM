@@ -191,7 +191,7 @@ RigFEM::LineSearch::LineSearch( ObjectFunction* objFun /*= NULL*/, double initSt
 
 }
 
-bool RigFEM::NewtonSolver::step()
+bool RigFEM::PointParamSolver::step()
 {
 	PRINT_F("############################################ newton iteration begin. ############################################");
 	EigVec p,n;
@@ -372,9 +372,9 @@ bool RigFEM::NewtonSolver::step()
 	m_fem->setDof(n, p);
 
 	// 记录新状态
-	int nTotParam = m_fem->m_transRig->getNParam();
+	int nTotParam = m_fem->getRigObj()->getNParam();
 	EigVec totParam(nTotParam);
-	m_fem->m_transRig->getParam(&totParam[0]);
+	m_fem->getRigObj()->getParam(&totParam[0]);
 	m_paramResult.push_back(totParam);
 
 	// 输出状态
@@ -389,13 +389,12 @@ bool RigFEM::NewtonSolver::step()
 	return true;
 }
 
-RigFEM::NewtonSolver::NewtonSolver( RiggedMesh* fem ) :m_fem(fem), m_maxIter(10), m_lineSearch(fem),
-m_minStepSize(1e-3), m_minGradSize(1e-2)
+RigFEM::PointParamSolver::PointParamSolver( RiggedMesh* fem ) :m_fem(fem), m_lineSearch(fem)
 {
 
 }
 
-void RigFEM::NewtonSolver::saveResult( const char* fileName, const char* paramName /*= "param"*/ )
+void RigFEM::PointParamSolver::saveResult( const char* fileName, const char* paramName /*= "param"*/ )
 {
 	ofstream file(fileName);
 	file << paramName << "=[\n";
@@ -412,7 +411,7 @@ void RigFEM::NewtonSolver::saveResult( const char* fileName, const char* paramNa
 	file.close();
 }
 
-void RigFEM::NewtonSolver::setMesh( RiggedMesh* fem )
+void RigFEM::PointParamSolver::setMesh( RiggedMesh* fem )
 {
 	m_fem = fem;
 	m_lineSearch = LineSearch(fem);
@@ -423,6 +422,17 @@ void RigFEM::NewtonSolver::setTerminateCond( int maxIter, double minStepSize, do
 	m_maxIter = maxIter;
 	m_minStepSize = minStepSize;
 	m_minGradSize = minGradSize;
+}
+
+RigFEM::NewtonSolver::NewtonSolver() :
+m_minStepSize(1e-3), m_minGradSize(1e-2), m_maxIter(10)
+{
+
+}
+
+RigFEM::PointParamSolver::~PointParamSolver()
+{
+
 }
 
 bool RigFEM::SimpleFunction::computeValueAndGrad( const EigVec& x, double* v /*= NULL*/, EigVec* grad /*= NULL*/ )
@@ -455,4 +465,120 @@ double RigFEM::SimpleFunction::computeFuncVal( double x )
 	double x2 = x*x;
 	double x3 = x*x2;
 	return coefA * x3 + coefB * x2 + coefC * x + coefD;
+}
+
+bool RigFEM::ParamSolver::step()
+{
+	PRINT_F("############################################ newton iteration begin. ############################################");
+	EigVec p;
+	m_fem->getDof(p);
+	double t = m_fem->getCurTime();
+	int nParam  = p.size();
+	EigVec tVec(1);
+	tVec[0] = t;
+
+	bool isSucceed = true;
+	EigDense  H;
+	EigVec	 G,G0,x,dx,dP,dGP;
+	int maxIter = m_maxIter;
+
+	for (int ithIter = 0; ithIter < maxIter; ++ithIter)
+	{
+		// 计算当前q p值的函数值、梯度值和Hessian
+		PRINT_F("######################### %dth Iteration #########################", ithIter);
+		int t0 = clock();
+		double   f;
+		x = p;							// x = [p]
+		isSucceed &= m_fem->computeValueAndGrad(x, tVec, &f, &G);
+		int t1 = clock();
+		//PRINT_F("compute value and grad:%f", (t1-t0)/1000.f);
+		if (!isSucceed)
+			return false;
+
+		// 如果梯度接近0，终止迭代
+		double GNorm = G.norm();
+		PRINT_F("f = %lf, |GP| = %lf, minGradSize = %e", f, GNorm, m_minGradSize);
+		if(GNorm < m_minGradSize)
+			break;
+		// 如果步长太小，也终止迭代
+		if (ithIter > 0 && dP.norm() < m_minStepSize)
+			break;
+
+		// 计算Hessian
+		isSucceed &= m_fem->computeHessian(p, tVec, H);
+		int t2 = clock();
+		//PRINT_F("compute hessian:%f",(t2-t1)/1000.f);
+		if (!isSucceed)
+			return false;
+
+		dP = H.colPivHouseholderQr().solve(-G);
+		int t3 = clock();
+		//PRINT_F("compute dN, dP:%f",(t3-t2)/1000.f);
+
+		// 进行一维搜索
+		dx = dP;
+		double df = G.dot(dx);
+		double a;
+		//m_lineSearch.setInitStep(3.05);
+		int res = m_lineSearch.lineSearch(x,dx,tVec,a, &f, &df);
+		if (res == 0 && a > 1e-5)
+		{
+			PRINT_F("a = %lf", a);
+			if (a != 1.0)
+			{
+				dP *= a;
+			}
+		}
+		else
+		{
+			PRINT_F("line search failed: a = %lf", a);
+		}
+		int t4 = clock();
+		//PRINT_F("line search:%f", (t4-t3)/1000.f);
+
+		// 计算残差
+		dGP = H * dP;
+		EigVec resiP = dGP + G;
+		resiP = resiP.cwiseAbs();
+
+		// 更新自变量
+		p += dP;
+
+		PRINT_F("|dP|=%le |resiP|∞=%le", dP.norm(), resiP.maxCoeff());
+		PRINT_F("minStepSize = %e", m_minStepSize);
+		//Global::showVector(p, "p");
+
+		//Utilities::saveVector(n, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/N.txt");
+		//Utilities::saveVector(p, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/P.txt");
+		//Utilities::loadVector(n, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/N_nodir.txt");
+		//Utilities::loadVector(p, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/P_nodir.txt");
+
+		G0 = G;
+		PRINT_F("************ load N P ***************");
+	}
+	//file.close();
+	// 更新为最终迭代状态
+	m_fem->setDof(p);
+
+	// 记录新状态
+	int nTotParam = m_fem->getRigObj()->getNParam();
+	EigVec totParam(nTotParam);
+	m_fem->getRigObj()->getParam(&totParam[0]);
+	m_paramResult.push_back(totParam);
+
+	// 输出状态
+	PRINT_F("time: %.2lf", t);
+	// 	PRINT_F("new params:");
+	// 	for (int i = 0; i < nParam; ++i)
+	// 	{
+	// 		PRINT_F("%.2lf ", p[i]);
+	// 	}
+	PRINT_F("############################################# newton iteration end. #############################################");
+
+	return true;
+}
+
+RigFEM::ParamSolver::ParamSolver( RiggedSkinMesh* fem /*= NULL*/ ) :m_fem(fem), m_lineSearch(fem)
+{
+
 }

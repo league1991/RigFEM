@@ -254,6 +254,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\tetGen\StatusRecorder.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\tetGen\StatusRecorder.h"
+				>
+			</File>
+			<File
 				RelativePath="..\tetGen\Utilities.cpp"
 				>
 			</File>

@@ -3,12 +3,13 @@
 using namespace std;
 using namespace RigFEM;
 
+std::string RigFEM::Utilities::s_whiteSpace = " \t\n\r\f";
+
 void Utilities::vegaSparse2Eigen( const SparseMatrix& src, EigSparse& tar , int nCols)
 {
 	int nRows = src.GetNumRows();
 	if (nCols == -1)
 		nCols = src.GetNumColumns();
-	typedef Eigen::Triplet<double> Tri;
 	vector<Tri> triList;
 	for (int r = 0; r < nRows; ++r)
 	{
@@ -103,3 +104,174 @@ void RigFEM::Utilities::transformBBox( const double srcMin[3], const double srcM
 		}
 	}
 }
+
+bool RigFEM::Utilities::stringToDense( const std::string& str, int begPos, int& endPos, EigDense& mat, std::string& matName )
+{
+	// get position of each part
+	int trueBeg     = str.find_first_not_of(s_whiteSpace, begPos);
+	if (trueBeg     == string::npos)
+		return false;
+	int equalPos    = str.find('=', trueBeg);
+	if (equalPos    == string::npos)
+		return false;
+	int lBracketPos = str.find('[', equalPos+1);
+	if (lBracketPos == string::npos)
+		return false;
+	int rBracketPos = str.find(']', lBracketPos+1);
+	if (rBracketPos == string::npos)
+		return false;
+
+	// extract content
+	string nameStr = str.substr(trueBeg, equalPos-trueBeg);
+	nameStr = nameStr.substr(0, nameStr.find_first_of(s_whiteSpace, 0));
+	string numberStr = str.substr(lBracketPos+1, rBracketPos-lBracketPos-1);
+
+	// parse lines
+	int lineBeg = 0;
+	int nRows, nCols;
+	typedef vector<double> MatrixRow;
+	vector<MatrixRow> matrixBuf;
+	bool hasComma = numberStr.find(',') != string::npos;
+	for (int lineEnd = 0;lineBeg < numberStr.size();lineBeg = lineEnd+1)
+	{
+		// extract line
+		lineEnd = numberStr.find_first_of("\n;", lineBeg);
+		string lineStr = numberStr.substr(lineBeg, lineEnd-lineBeg);
+		if (lineStr == "")
+			continue;
+
+		// parse a line
+		stringstream lineStream(lineStr);
+		MatrixRow matRow;
+		while(true)
+		{
+			double v;
+			lineStream >> v;
+			if (!lineStream)
+				break;
+			matRow.push_back(v);
+
+			// eat up commas
+			if (hasComma)
+			{
+				char comma;
+				lineStream >> comma;
+			}
+		}
+
+		if (matRow.size() != 0) 
+		{
+			if (matrixBuf.size() == 0)
+			{
+				matrixBuf.push_back(matRow);
+				nCols = matRow.size();
+			}
+			else if(nCols == matRow.size())
+			{
+				matrixBuf.push_back(matRow);
+			}
+			else
+				return false;
+		}
+
+		if (lineEnd == string::npos)
+			break;
+	}
+
+	// fill matrix
+	nRows = matrixBuf.size();
+	mat.resize(nRows, nCols);
+	for (int r = 0; r < nRows; ++r)
+	{
+		for (int c = 0; c < nCols; ++c)
+		{
+			mat(r,c) = matrixBuf[r][c];
+		}
+	}
+
+	// find end positon
+	int semicolonPos= str.find_first_not_of(s_whiteSpace, rBracketPos+1);
+	if (semicolonPos != string::npos && str[semicolonPos] == ';')
+	{
+		endPos = str.find_first_not_of(s_whiteSpace, semicolonPos+1);
+	}
+	else
+	{
+		endPos = semicolonPos;
+	}
+	matName = nameStr;
+	return true;
+}
+
+int RigFEM::Utilities::skipMatlabComment( const string& str, int begPos )
+{
+	while (begPos < str.length())
+	{
+		begPos = str.find_first_not_of(s_whiteSpace, begPos);
+		if (begPos == string::npos)
+			return str.length();
+		if (str[begPos] != '%')
+			return begPos;
+		begPos = str.find_first_of('\n', begPos);
+	}
+	return str.length();
+}
+
+bool RigFEM::Utilities::fileToDense( const char* fileName, map<string, EigDense>& denseMap )
+{
+	ifstream file(fileName);
+	if (!file)
+		return false;
+	std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	file.close();
+
+	int curPos = 0;
+	denseMap.clear();
+	while (curPos < str.length())
+	{
+		curPos = skipMatlabComment(str, curPos);
+		if (curPos >= str.length())
+			break;
+		int newPos = curPos;
+		EigDense mat;
+		string   matName;
+		if(!stringToDense(str, curPos, newPos, mat, matName))
+			return false;
+
+		denseMap[matName] = mat;
+		curPos = newPos;
+	}
+	return true;
+}
+
+bool RigFEM::Utilities::eigDense2Sparse( const EigDense& denseMat, EigSparse& sparseMat )
+{
+	vector<Tri> triList;
+
+	for (int i = 0; i < denseMat.rows(); ++i)
+	{
+		for (int j = 0; j < denseMat.cols(); ++j)
+		{
+			double v = denseMat(i,j);
+			if (v == 0.0)
+				continue;
+
+			triList.push_back(Tri(i,j,v));
+		}
+	}
+	sparseMat = EigSparse(denseMat.rows(), denseMat.cols());
+	sparseMat.setFromTriplets(triList.begin(), triList.end());
+	return true;
+}
+
+void RigFEM::Utilities::double2EigenDiag( const double* m, int n, EigSparse& diag )
+{
+	vector<Tri> triList;
+	for (int r = 0; r < n; ++r)
+	{
+		triList.push_back(Tri(r,r,m[r]));
+	}
+	diag = EigSparse(n,n);
+	diag.setFromTriplets(triList.begin(), triList.end());
+}
+

@@ -105,6 +105,8 @@ global proc AErigSimulatorTemplate(string $nodeName)
 			editorTemplate -addControl "inverseStepTolerance";
 			editorTemplate -addControl "maxIteration";
 			editorTemplate -addControl "savePath";
+			editorTemplate -addControl "simulationType";
+			editorTemplate -addControl "weightPath";
 			editorTemplate -callCustom "initSimulatorControl" "modifySimulatorControl" "noAttr";	
 		editorTemplate -endLayout;
 		

@@ -6,12 +6,15 @@ namespace RigFEM
 
 class Utilities
 {
+private:
+	typedef Eigen::Triplet<double> Tri;
 public:
-	static void vegaSparse2Eigen(const SparseMatrix& src, EigSparse& tar, int nCols = -1);
-	
+	// matrix 
+	// 把vega矩阵转成Eigen矩阵
+	static void vegaSparse2Eigen(const SparseMatrix& src, EigSparse& tar, int nCols = -1);	
 	// 把vega矩阵的某个子矩阵转成Eigen矩阵，rowID，colID指定选中的行和列
 	static void vegaSparse2Eigen( const SparseMatrix& src, const std::vector<int>& rowID, const std::vector<int>& colID, EigSparse& tar);
-
+	static void double2EigenDiag(const double* m, int n, EigSparse& diag);
 	template<class MatrixType>
 	static double maxError(const MatrixType& m0, const MatrixType& m1)
 	{
@@ -48,6 +51,14 @@ public:
 		return str;
 	}
 
+	// parse matlab matrix
+	// actual valid str range is [begPos, endPos)
+	static bool stringToDense(const std::string& str, int begPos, int& endPos, EigDense& mat, std::string& matName);
+	// parse matlab matrix file(.m)
+	static bool fileToDense(const char* fileName, std::map<std::string, EigDense>& denseMap);
+	static bool eigDense2Sparse(const EigDense& denseMat, EigSparse& sparseMat);
+	
+	// vector functions
 	template<class VectorType>
 	static std::string vecToString( const VectorType&vec, const char*name )
 	{
@@ -64,6 +75,7 @@ public:
 		return str;
 	}
 
+	
 	template<class VectorType>
 	static bool	saveVector(const VectorType& vec, const char* fileName)
 	{
@@ -107,6 +119,11 @@ public:
 								const double mat[4][4], 
 								double dstMin[3], 
 								double dstMax[3]);
+
+private:
+	static int  skipMatlabComment(const std::string& str, int begPos);
+
+	static std::string s_whiteSpace;
 };
 
 class MathUtilities

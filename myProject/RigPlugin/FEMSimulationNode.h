@@ -4,6 +4,11 @@
 class RigSimulationNode: public MPxLocatorNode
 {
 public:
+	enum SimulationType
+	{
+		SIM_STANDARD = 0,
+		SIM_SKIN     = 1
+	};
 	RigSimulationNode(void);
 	virtual ~RigSimulationNode(void);
 	void postConstructor();
@@ -71,6 +76,8 @@ private:
 	static MObject		m_maxIter;				// 最大迭代次数
 	static MObject		m_minStepSize;			// 迭代的最小步长，若步长小于此值，终止迭代
 	static MObject		m_minGradSize;			// 最小的梯度值，如梯度小于此值，终止迭代
+	static MObject		m_simType;				// 模拟算法选择
+	static MObject		m_weightPath;			// 权重路径
 
 
 	static const char*  m_initParamName[2];
@@ -87,10 +94,15 @@ private:
 	static const char*  m_maxIterName[2];				// 最大迭代次数
 	static const char*  m_minStepSizeName[2];			// 迭代的最小步长，若步长小于此值，终止迭代
 	static const char*  m_minGradSizeName[2];			// 最小的梯度值，如梯度小于此值，终止迭代
+	static const char*  m_simTypeName[2];				// 模拟算法选择
+	static const char*	m_weightPathName[2];
 
-				
-	RigFEM::GeneralRig*	m_rig;					// 封装了节点求值机制	
-	RigFEM::RiggedMesh*	m_rigMesh;				// fem 数据
-	RigFEM::NewtonSolver* m_solver;				// 求解器
-	RigFEM::StatusRecorder m_recorder;			// 记录求解状态		
+	SimulationType		m_simTypeFlag;
+
+// 	RigFEM::GeneralRig*	m_rig;					// 封装了节点求值机制	
+// 	RigFEM::RiggedMesh*	m_rigMesh;				// fem 数据
+// 	RigFEM::NewtonSolver* m_solver;				// 求解器
+// 	RigFEM::StatusRecorder m_recorder;			// 记录求解状态
+
+	RigFEM::SimulatorBase*	m_simulator;				// 模拟器
 };

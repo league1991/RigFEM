@@ -39,6 +39,7 @@
 // Eigen
 #include "Eigen/sparse"
 #include "Eigen/LU"
+#include "Eigen/QR"
 #include "Eigen/SuperLUSupport"
 
 typedef Eigen::SparseMatrix<double> EigSparse;
@@ -46,12 +47,16 @@ typedef Eigen::MatrixXd				EigDense;
 typedef Eigen::VectorXd				EigVec;
 
 // 体网格生成
+#define TETLIBRARY
 #include "tetgen.h"
+
+#define PRINT_F(format,...)					 printf(format, ##__VA_ARGS__)
 
 // 本地文件
 #include "Utilities.h"
 #include "CorotationalLinearFEMWrapper.h"
 #include "rig.h"
 #include "NewtonSolver.h"
+#include "StatusRecorder.h"
 #include "FEMSystem.h"
 

@@ -309,6 +309,14 @@
 			RelativePath=".\ReadMe.txt"
 			>
 		</File>
+		<File
+			RelativePath=".\RigSimulator.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\RigSimulator.h"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>

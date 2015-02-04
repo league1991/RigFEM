@@ -153,7 +153,7 @@ void RigFEM::StatusRecorder::state2Str( RigStatus::Status s, const char* name, s
 			for (int i = 0; i < vec->size(); ++i)
 			{
 				double val = (*vec)[i];
-				sprintf_s(numberBuf, 100, "%lf, ", val);
+				sprintf_s(numberBuf, 100, "%lf ", val);
 				str += numberBuf;
 			}
 			str += "\n";
