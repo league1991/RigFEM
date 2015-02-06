@@ -103,6 +103,7 @@ global proc AErigSimulatorTemplate(string $nodeName)
 			editorTemplate -addControl "derivativeStep";
 			editorTemplate -addControl "inverseGradTolerance";
 			editorTemplate -addControl "inverseStepTolerance";
+			editorTemplate -addControl "maxParamStepEachIteration";
 			editorTemplate -addControl "maxIteration";
 			editorTemplate -addControl "savePath";
 			editorTemplate -addControl "simulationType";

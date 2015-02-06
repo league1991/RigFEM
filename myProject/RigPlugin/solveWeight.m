@@ -1,6 +1,6 @@
-function W = solveWeight()
+function W = solveWeight(dataFileName, weightFileName)
 
-    result;
+    eval(dataFileName);
 
     nFrame = size(q,1);
     pos = q;%repmat(initPos, [nFrame,1]) + q; 
@@ -26,6 +26,9 @@ function W = solveWeight()
     end
     imagesc(W);
     size(W);
+	
+	saveCmd = sprintf('saveMatrix(''%s'', ''weight'', W'');', weightFileName);
+	eval(saveCmd);
 end
 
 function plotPnt(v)

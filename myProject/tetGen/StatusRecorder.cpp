@@ -48,6 +48,61 @@ const EigVec* RigFEM::RigStatus::getByName( Status s ) const
 	}
 }
 
+RigFEM::RigStatus::~RigStatus()
+{
+}
+
+RigFEM::RigStatus::RigStatus( const EigVec& q, const EigVec& v, const EigVec& a, const EigVec& param ) :m_q(q), m_v(v), m_a(a), m_param(param)
+{
+}
+
+
+bool RigFEM::RigStatus::getCustom( const string& name, double& v ) const
+{
+	map<string, double>::const_iterator p = m_customScalar.find(name);
+	if (p == m_customScalar.end())
+	{
+		return false;
+	}
+	v = p->second;
+	return true;
+}
+
+bool RigFEM::RigStatus::getCustom( const string& name, EigVec& v ) const
+{
+	map<string, EigVec>::const_iterator p = m_customVector.find(name);
+	if (p == m_customVector.end())
+	{
+		return false;
+	}
+	v = p->second;
+	return true;
+}
+
+void RigFEM::RigStatus::addOrSetCustom( const string& name, double v )
+{
+	m_customScalar[name] = v;
+}
+
+void RigFEM::RigStatus::addOrSetCustom( const string& name, const EigVec& v )
+{
+	m_customVector[name] = v;
+}
+
+void RigFEM::RigStatus::mergeCustom( const RigStatus& s )
+{
+	for (map<string, double>::const_iterator it = s.m_customScalar.begin();
+		it != s.m_customScalar.end(); ++it)
+	{
+		m_customScalar[it->first] = it->second;
+	}
+	for (map<string, EigVec>::const_iterator it = s.m_customVector.begin();
+		it != s.m_customVector.end(); ++it)
+	{
+		m_customVector[it->first] = it->second;
+	}
+}
+
 bool RigFEM::StatusRecorder::getStatus( int ithFrame, RigStatus& s ) const
 {
 	if (ithFrame < m_startFrame || 
@@ -59,15 +114,7 @@ bool RigFEM::StatusRecorder::getStatus( int ithFrame, RigStatus& s ) const
 	return true;
 }
 
-bool RigFEM::StatusRecorder::appendStatus( const RigStatus& s )
-{
-	if (s.matchLength(m_pntLength, m_paramLength))
-	{
-		m_statusList.push_back(s);
-		return true;
-	}
-	return false;
-}
+
 
 void RigFEM::StatusRecorder::init( int startFrame, int pntLength, int paramLength , 
 								  const vector<int>& intPntIdx,
@@ -90,11 +137,13 @@ bool RigFEM::StatusRecorder::setStatus( int ithFrame, const RigStatus& s )
 	int endFrame = m_startFrame + m_statusList.size() - 1;
 	if (ithFrame >= m_startFrame && ithFrame <= endFrame)
 	{
-		m_statusList[ithFrame - m_startFrame] = s;
+		int idx = ithFrame - m_startFrame;
+		m_statusList[ithFrame - m_startFrame] = s;		
 		return true;
 	}
 	if (ithFrame == endFrame+1)
 	{
+		int idx = ithFrame - m_startFrame;
 		m_statusList.push_back(s);
 		return true;
 	}

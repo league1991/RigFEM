@@ -1,4 +1,5 @@
 #pragma once
+#include "StatusRecorder.h"
 
 namespace RigFEM
 {
@@ -21,22 +22,30 @@ namespace RigFEM
 		double computeFuncVal(double x);
 	};
 	
-	class LineSearch
+	class LineSearcher
 	{
 	public:
-		LineSearch(ObjectFunction* objFun = NULL, double initStep = 1.0, double maxStep = 10);
-		~LineSearch(void);
-
+		LineSearcher(ObjectFunction* objFun = NULL, double initStep = 1.0, double maxStep = 10);
+		~LineSearcher(void);
+		enum Status
+		{
+			LS_NONE = 0,
+			LS_WOLFE_DESCENT	= (0x1) << 1,
+			LS_WOLFE_CURVATURE	= (0x1) << 2
+		};
+	
+		bool setC(double c1, double c2);
 		
 		// 一维搜索函数
 		// param 是目标函数的一些参数，例如时间。在搜索过程中参数保持不变
 		// 若返回值等于0， 成功找到符合wolfe条件的函数
-		// 若返回值等于1， 没有找到符合wolfe条件的函数
+		// 若返回值不等于0， 没有找到符合wolfe条件的函数，可根据Status各个枚举变量获得问题所在
 		// f0 df0为起始点的函数值和导数，若不提供，则另行计算
 		int lineSearch( const EigVec& x0, const EigVec& dx, const EigVec& param, double& aFinal,
 						double* f0 = NULL, double *df0 = NULL);
 		void setInitStep(double initStep){m_initStep = initStep;}
 		void setMaxStep(double maxStep){m_maxStep = maxStep;}
+		void setMaxZoomIter(int maxZoomIter){m_maxZoomIter = maxZoomIter;}
 	private:
 
 		void setOriginAndDir(const EigVec& x0, const EigVec& dx);
@@ -56,8 +65,7 @@ namespace RigFEM
 					double& a );
 		// 在区间[a0,a1]或[a1,a0]中估计一个极小值点
 		// 若返回0，表示成功在区间找到一个极小值点
-		// 若返回1，表示取a0为最小点
-		// 若返回2，表示取a1为最小点
+		// 若返回1，表示失败，此时返回中点
 		int guessMinPnt( double a0, double fa0, double *dfa0, double a1, double fa1, double *dfa1, double& aMin );
 
 		EigVec			m_param;			// 目标函数参数
@@ -71,6 +79,7 @@ namespace RigFEM
 
 		double			m_initStep;			// 初始步长
 		double			m_maxStep;			// 最大步长
+		int				m_maxZoomIter;
 
 		ObjectFunction* m_objFunc;			// 目标函数对象
 	};
@@ -85,13 +94,23 @@ namespace RigFEM
 
 		// 终止条件
 		void setTerminateCond(int maxIter, double minStepSize, double minGradSize);
-
+		
+		bool setInitStatus(const RigStatus&s);
+		const RigStatus& getFinalStatus()const{return m_finalStatus;}
 		virtual bool step()=0;
+
+		void setIterationMaxStepSize(double maxStep);
 	protected:
+
+		RigStatus	m_initStatus;		// 模拟初始状态
+		RigStatus	m_finalStatus;		// 模拟结束状态
+
 		// 以下是迭代的终止条件
 		int			m_maxIter;			// 最大迭代次数			
 		double		m_minStepSize;		// 最小步长，步长长度小于此值时迭代终止
 		double		m_minGradSize;		// 梯度长度小于此值时迭代终止
+
+		double		m_iterMaxStepSize;	// 迭代过程中最大步长,每次参数各个分量的增量不得超过此值
 	};
 	class PointParamSolver:public NewtonSolver
 	{
@@ -108,7 +127,7 @@ namespace RigFEM
 
 	private:
 		RiggedMesh*	m_fem;
-		LineSearch	m_lineSearch;
+		LineSearcher	m_lineSearch;
 
 		// 记录模拟出来的参数变化
 		vector<EigVec>			m_paramResult;				// 参数向量，包括关键帧驱动的参数，和模拟出来的参数
@@ -122,7 +141,7 @@ namespace RigFEM
 		bool step();
 	private:
 		RiggedSkinMesh*	m_fem;
-		LineSearch	m_lineSearch;
+		LineSearcher	m_lineSearch;
 
 		// 记录模拟出来的参数变化
 		vector<EigVec>			m_paramResult;				// 参数向量，包括关键帧驱动的参数，和模拟出来的参数

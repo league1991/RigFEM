@@ -22,7 +22,9 @@ const char* RigSimulationNode::m_minStepSizeName[2] = {"inverseStepTolerance", "
 const char* RigSimulationNode::m_maxIterName[2] = {"maxIteration", "maxIter"};
 const char* RigSimulationNode::m_simTypeName[2] = {"simulationType", "simType"};
 const char* RigSimulationNode::m_weightPathName[2]={"weightPath","wPath"};
+const char* RigSimulationNode::m_maxParamStepName[2] = {"maxParamStepEachIteration", "maxParamStep"};
 
+MObject RigSimulationNode::m_maxParamStep;
 MObject RigSimulationNode::m_weightPath;
 MObject RigSimulationNode::m_simType;
 MObject RigSimulationNode::m_minGradSize;
@@ -281,6 +283,18 @@ MStatus RigSimulationNode::initialize()
 	tAttr.setUsedAsFilename(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
+	m_maxParamStep = nAttr.create(m_maxParamStepName[0], m_maxParamStepName[1], MFnNumericData::kDouble, 1, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0.001);
+	nAttr.setMax(1e7);
+	nAttr.setSoftMin(0.1);
+	nAttr.setSoftMax(3);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
 	s = addAttribute(m_param);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_initParam);
@@ -312,6 +326,8 @@ MStatus RigSimulationNode::initialize()
 	s = addAttribute(m_simType);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_weightPath);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_maxParamStep);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	s = attributeAffects(m_initParam, m_param);
@@ -349,7 +365,10 @@ MStatus RigSimulationNode::compute( const MPlug& plug, MDataBlock& data )
 		int curFrame = getCurFrame();
 		EigVec p;
 		if(m_simulator && m_simulator->isReady() && m_simulator->getParam(curFrame, p))
+		{
+			Global::showVector(p, "P");
 			setParamPlug(&p[0], p.size());
+		}
 		else
 			setParamToInit();
 	
@@ -498,16 +517,13 @@ bool RigSimulationNode::resetRig()
 
 	if (!res)
 	{
-		PRINT_F("failed to get rig mesh obj.");
+		PRINT_F("failed to initialize.");
 		clearRig();
 		return false;
 	}
 
 	// 初始化rig对象
-	MPlug deriStepPlug = Global::getPlug(this, m_deriStepName[0]);
-	double deriStepVal = 1e-3;
-	deriStepPlug.getValue(deriStepVal);
-	m_simulator->setDeriStepSize(deriStepVal);
+	updateDeriStepSize();
 	return true;
 }
 
@@ -646,13 +662,18 @@ bool RigSimulationNode::updateTerminationCond()
 		MPlug maxIterPlug = Global::getPlug(this, m_maxIterName[0]);
 		MPlug minGradPlug = Global::getPlug(this, m_minGradSizeName[0]);
 		MPlug minStepPlug = Global::getPlug(this, m_minStepSizeName[0]);
+		MPlug maxPStepPlug= Global::getPlug(this, m_maxParamStepName[0]);
 
 		int maxIter = maxIterPlug.asInt();
 		double gradSize= 1.0 / minGradPlug.asDouble();
 		double stepSize= 1.0 / minStepPlug.asDouble();
+		double maxPStep= maxPStepPlug.asDouble();
 		NewtonSolver* solver = sim->getSolver();
 		if (solver)
+		{
 			solver->setTerminateCond(maxIter, stepSize, gradSize);
+			solver->setIterationMaxStepSize(maxPStep);
+		}
 	}
 	return true;
 }
@@ -708,6 +729,7 @@ bool RigSimulationNode::staticStepRig()
 	m_simulator->staticStepRig(curFrame, initParam);
 	return true;
 }
+
 
 
 

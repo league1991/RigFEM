@@ -37,7 +37,11 @@ bool RigFEM::RigSimulator::testHessian( int curFrame )
 	// 设置当前帧状态
 	RigStatus lastStatus, curStatus;
 	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
+	if (!res)
+		res = getInitStatus(lastStatus);
 	res&= m_recorder->getStatus(curFrame, curStatus);
+	if (!res)
+		res = getInitStatus(curStatus);
 	if (!res)
 		return false;
 	double noiseN = 1.0, noiseP = 1.0;
@@ -53,9 +57,14 @@ bool RigFEM::RigSimulator::testGradient( int curFrame )
 	// 设置当前帧状态
 	RigStatus lastStatus, curStatus;
 	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
+	if (!res)
+		res = getInitStatus(lastStatus);
 	res&= m_recorder->getStatus(curFrame, curStatus);
 	if (!res)
+		res = getInitStatus(curStatus);
+	if (!res)
 		return false;
+
 	double noiseN = 1.0, noiseP = 1.0;
 	m_rigMesh->testCurFrameGrad(lastStatus, curStatus, noiseN, noiseP);
 	return true;
@@ -80,11 +89,7 @@ bool RigFEM::RigSimulator::stepRig( int curFrame )
 		res = getInitStatus(s);
 	if (res)
 	{
-		if (!m_rigMesh->setStatus(s))
-		{
-			PRINT_F("status invalid");
-			return false;
-		}
+		m_solver->setInitStatus(s);
 	}
 
 	if(!m_rig)
@@ -98,7 +103,7 @@ bool RigFEM::RigSimulator::stepRig( int curFrame )
 	}
 
 	// 记录结果
-	s = m_rigMesh->getStatus();
+	s = m_solver->getFinalStatus();
 	return m_recorder->setStatus(curFrame, s);
 }
 
@@ -203,7 +208,7 @@ bool RigFEM::RigSimulator::getParam( int curFrame, EigVec& curParam )
 		res = getInitStatus(status);
 	if (!res)
 		return false;
-	curParam = status.getParam();
+	curParam = status.getP();
 	return true;
 }
 
@@ -228,7 +233,11 @@ bool RigFEM::RigSkinSimulator::testHessian( int curFrame )
 	// 设置当前帧状态
 	RigStatus lastStatus, curStatus;
 	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
+	if (!res)
+		res = getInitStatus(lastStatus);
 	res&= m_recorder->getStatus(curFrame, curStatus);
+	if (!res)
+		res = getInitStatus(curStatus);
 	if (!res)
 		return false;
 	double noiseP = 1.0;
@@ -245,7 +254,11 @@ bool RigFEM::RigSkinSimulator::testGradient( int curFrame )
 	// 设置当前帧状态
 	RigStatus lastStatus, curStatus;
 	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
+	if (!res)
+		res = getInitStatus(lastStatus);
 	res&= m_recorder->getStatus(curFrame, curStatus);
+	if (!res)
+		res = getInitStatus(curStatus);
 	if (!res)
 		return false;
 	double noiseP = 1.0;

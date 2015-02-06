@@ -1,5 +1,6 @@
 #pragma once
 
+using namespace std;
 namespace RigFEM
 {	
 	class RigStatus
@@ -11,14 +12,14 @@ namespace RigFEM
 			STATUS_Q,
 			STATUS_V,
 			STATUS_A,
-			STATUS_P
+			STATUS_P,
 		};
 		RigStatus(){}
 		RigStatus(	const EigVec& q, 
 					const EigVec& v,
 					const EigVec& a,
-					const EigVec& param):m_q(q), m_v(v), m_a(a), m_param(param)
-		{}
+					const EigVec& param);
+		~RigStatus();
 
 		// 返回点数向量长度，若q v a长度不一，返回-1
 		int getPointVecLength()const;
@@ -27,13 +28,23 @@ namespace RigFEM
 		const EigVec& getQ()const{return m_q;}
 		const EigVec& getV()const{return m_v;}
 		const EigVec& getA()const{return m_a;}
-		const EigVec& getParam()const{return m_param;}
+		const EigVec& getP()const{return m_param;}
 		const EigVec* getByName(Status s)const;
 
 		bool matchLength(int pntVecLength, int paramVecLength)const;
+
+		// 自定义属性
+		void addOrSetCustom(const string& name, double v);
+		void addOrSetCustom(const string& name, const EigVec& v);
+		bool getCustom(const string& name, double& v)const;
+		bool getCustom(const string& name, EigVec& v)const;
+		void mergeCustom(const RigStatus& s);
+
 	private:
 		EigVec	m_q, m_v, m_a;
 		EigVec	m_param;
+		map<string, double> m_customScalar;			// 一些自定义参数
+		map<string, EigVec> m_customVector;
 	};
 	class StatusRecorder
 	{
@@ -45,7 +56,6 @@ namespace RigFEM
 		void init( int startFrame, int pntLength, int paramLength , 
 			const vector<int>& intPntIdx, const vector<int>& surfPntIdx,
 			const vector<double>& initPntPos);
-		bool appendStatus(const RigStatus& s);
 		bool getStatus(int ithFrame, RigStatus& s)const;
 		bool setStatus(int ithFrame, const RigStatus& s);
 		void setPntIdx(const vector<int>& intPntIdx, const vector<int>& surfPntIdx);

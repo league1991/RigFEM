@@ -78,6 +78,7 @@ private:
 	static MObject		m_minGradSize;			// 最小的梯度值，如梯度小于此值，终止迭代
 	static MObject		m_simType;				// 模拟算法选择
 	static MObject		m_weightPath;			// 权重路径
+	static MObject		m_maxParamStep;			// 每次迭代参数的最大增量
 
 
 	static const char*  m_initParamName[2];
@@ -95,7 +96,8 @@ private:
 	static const char*  m_minStepSizeName[2];			// 迭代的最小步长，若步长小于此值，终止迭代
 	static const char*  m_minGradSizeName[2];			// 最小的梯度值，如梯度小于此值，终止迭代
 	static const char*  m_simTypeName[2];				// 模拟算法选择
-	static const char*	m_weightPathName[2];
+	static const char*	m_weightPathName[2];			// 权重路径
+	static const char*	m_maxParamStepName[2];			// 每次迭代参数的最大增量
 
 	SimulationType		m_simTypeFlag;
 

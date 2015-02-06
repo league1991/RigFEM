@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtCore&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtGui&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtNetwork&quot;;&quot;$(MAYADIR)\include&quot;;..\tetGen; ..\..\utilities\tetgen;&quot;$(PTHREADDIR)\lib&quot;;..\..\libraries\configFile;..\..\libraries\graph;..\..\libraries\isotropicHyperelasticFEM;..\..\libraries\corotationalLinearFEM;..\..\libraries\massSpringSystem;..\..\libraries\elasticForceModel;..\..\libraries\forceModel;..\..\libraries\integrator;..\..\libraries\integratorSparse;..\..\libraries\integratorDense;..\..\libraries\lighting;..\..\libraries\sceneobject;..\..\libraries\getopts;..\..\libraries\renderVolumetricMesh;&quot;..\..\libraries\glui\glui-2.35\src\include&quot;;..\..\libraries\openGLHelper;..\..\libraries\volumetricMesh;..\..\libraries\performanceCounter;..\..\libraries\modalMatrix;..\..\libraries\loadList;..\..\libraries\camera;..\..\libraries\matrix;..\..\libraries\sparseSolver;..\..\libraries\reducedStvk;..\..\libraries\insertRows;..\..\libraries\objMesh;..\..\libraries\miniVector;..\..\libraries\matrixIO;..\..\libraries\stvk;..\..\libraries\sparseMatrix;..\..\libraries\include;..\..\libraries\eigen3;..\..\libraries\superLU\src;..\..\libraries\polarDecomposition"
+				AdditionalIncludeDirectories="&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtCore&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtGui&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtNetwork&quot;;&quot;$(MAYADIR)\include&quot;;..\rigplugin;.;..\tetGen;..\..\utilities\tetgen;&quot;$(PTHREADDIR)\lib&quot;;..\..\libraries\configFile;..\..\libraries\graph;..\..\libraries\isotropicHyperelasticFEM;..\..\libraries\corotationalLinearFEM;..\..\libraries\massSpringSystem;..\..\libraries\elasticForceModel;..\..\libraries\forceModel;..\..\libraries\integrator;..\..\libraries\integratorSparse;..\..\libraries\integratorDense;..\..\libraries\lighting;..\..\libraries\sceneobject;..\..\libraries\getopts;..\..\libraries\renderVolumetricMesh;&quot;..\..\libraries\glui\glui-2.35\src\include&quot;;..\..\libraries\openGLHelper;..\..\libraries\volumetricMesh;..\..\libraries\performanceCounter;..\..\libraries\modalMatrix;..\..\libraries\loadList;..\..\libraries\camera;..\..\libraries\matrix;..\..\libraries\sparseSolver;..\..\libraries\reducedStvk;..\..\libraries\insertRows;..\..\libraries\objMesh;..\..\libraries\miniVector;..\..\libraries\matrixIO;..\..\libraries\stvk;..\..\libraries\sparseMatrix;..\..\libraries\include;..\..\libraries\eigen3;..\..\libraries\superLU\src;..\..\libraries\polarDecomposition"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_MBCS;NT_PLUGIN;REQUIRE_IOSTREAM;MAYA_PLUGIN;_BOOL;MATLAB_ENGINE;EIGEN;_CRT_SECURE_NO_WARNINGS;TETLIBRARY;_USE_MATH_DEFINES"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -122,7 +122,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtCore&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtGui&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtNetwork&quot;;&quot;$(MAYADIR)\include&quot;;..\tetGen; ..\..\utilities\tetgen;&quot;$(PTHREADDIR)\lib&quot;;..\..\libraries\configFile;..\..\libraries\graph;..\..\libraries\isotropicHyperelasticFEM;..\..\libraries\corotationalLinearFEM;..\..\libraries\massSpringSystem;..\..\libraries\elasticForceModel;..\..\libraries\forceModel;..\..\libraries\integrator;..\..\libraries\integratorSparse;..\..\libraries\integratorDense;..\..\libraries\lighting;..\..\libraries\sceneobject;..\..\libraries\getopts;..\..\libraries\renderVolumetricMesh;&quot;..\..\libraries\glui\glui-2.35\src\include&quot;;..\..\libraries\openGLHelper;..\..\libraries\volumetricMesh;..\..\libraries\performanceCounter;..\..\libraries\modalMatrix;..\..\libraries\loadList;..\..\libraries\camera;..\..\libraries\matrix;..\..\libraries\sparseSolver;..\..\libraries\reducedStvk;..\..\libraries\insertRows;..\..\libraries\objMesh;..\..\libraries\miniVector;..\..\libraries\matrixIO;..\..\libraries\stvk;..\..\libraries\sparseMatrix;..\..\libraries\include;..\..\libraries\eigen3;..\..\libraries\superLU\src;..\..\libraries\polarDecomposition"
+				AdditionalIncludeDirectories="&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtCore&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtGui&quot;;&quot;$(MAYADIR)\include\Qt\qt-4.7.1-include\QtNetwork&quot;;&quot;$(MAYADIR)\include&quot;;.;..\rigPlugin;..\tetGen;..\..\utilities\tetgen;&quot;$(PTHREADDIR)\lib&quot;;..\..\libraries\configFile;..\..\libraries\graph;..\..\libraries\isotropicHyperelasticFEM;..\..\libraries\corotationalLinearFEM;..\..\libraries\massSpringSystem;..\..\libraries\elasticForceModel;..\..\libraries\forceModel;..\..\libraries\integrator;..\..\libraries\integratorSparse;..\..\libraries\integratorDense;..\..\libraries\lighting;..\..\libraries\sceneobject;..\..\libraries\getopts;..\..\libraries\renderVolumetricMesh;&quot;..\..\libraries\glui\glui-2.35\src\include&quot;;..\..\libraries\openGLHelper;..\..\libraries\volumetricMesh;..\..\libraries\performanceCounter;..\..\libraries\modalMatrix;..\..\libraries\loadList;..\..\libraries\camera;..\..\libraries\matrix;..\..\libraries\sparseSolver;..\..\libraries\reducedStvk;..\..\libraries\insertRows;..\..\libraries\objMesh;..\..\libraries\miniVector;..\..\libraries\matrixIO;..\..\libraries\stvk;..\..\libraries\sparseMatrix;..\..\libraries\include;..\..\libraries\eigen3;..\..\libraries\superLU\src;..\..\libraries\polarDecomposition"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;RIGPLUGIN_EXPORTS;_MBCS;NT_PLUGIN;REQUIRE_IOSTREAM;MAYA_PLUGIN;_BOOL;MATLAB_ENGINE;EIGEN;_CRT_SECURE_NO_WARNINGS;TETLIBRARY;_USE_MATH_DEFINES"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -225,6 +225,22 @@
 				>
 			</File>
 			<File
+				RelativePath="..\tetGen\RiggedSkinMesh.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\tetGen\RiggedSkinMesh.h"
+				>
+			</File>
+			<File
+				RelativePath=".\RigSimulator.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RigSimulator.h"
+				>
+			</File>
+			<File
 				RelativePath="..\tetGen\StatusRecorder.cpp"
 				>
 			</File>
@@ -307,14 +323,6 @@
 		</Filter>
 		<File
 			RelativePath=".\ReadMe.txt"
-			>
-		</File>
-		<File
-			RelativePath=".\RigSimulator.cpp"
-			>
-		</File>
-		<File
-			RelativePath=".\RigSimulator.h"
 			>
 		</File>
 	</Files>

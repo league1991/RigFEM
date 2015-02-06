@@ -117,9 +117,10 @@ typedef Eigen::VectorXd				EigVec;
 #include "Utilities.h"
 #include "CorotationalLinearFEMWrapper.h"
 #include "rig.h"
-#include "NewtonSolver.h"
 #include "StatusRecorder.h"
+#include "NewtonSolver.h"
 #include "FEMSystem.h"
+#include "RiggedSkinMesh.h"
 #include "RigSimulator.h"
 
 #include "globals.h"

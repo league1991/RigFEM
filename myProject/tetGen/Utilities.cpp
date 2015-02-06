@@ -264,6 +264,30 @@ bool RigFEM::Utilities::eigDense2Sparse( const EigDense& denseMat, EigSparse& sp
 	return true;
 }
 
+bool RigFEM::Utilities::kronecker3X( EigSparse& src, EigSparse& dst )
+{
+	int nRow = src.rows();
+	int nCol = src.cols();
+
+	vector<Tri> triList;
+	for (int c = 0; c < nCol; ++c)
+	{
+		for (EigSparse::InnerIterator it(src, c); it; ++it)  
+		{
+			double v = it.value();
+			int rId = it.row() * 3;   // row index
+			int cId = it.col() * 3;   // col index (here it is equal to k)
+			triList.push_back(Tri(rId, cId, v));	rId++; cId++;
+			triList.push_back(Tri(rId, cId, v));	rId++; cId++;
+			triList.push_back(Tri(rId, cId, v));
+		}
+	}
+
+	dst = EigSparse(nRow*3, nCol*3);
+	dst.setFromTriplets(triList.begin(), triList.end());
+	return true;
+}
+
 void RigFEM::Utilities::double2EigenDiag( const double* m, int n, EigSparse& diag )
 {
 	vector<Tri> triList;
@@ -275,3 +299,10 @@ void RigFEM::Utilities::double2EigenDiag( const double* m, int n, EigSparse& dia
 	diag.setFromTriplets(triList.begin(), triList.end());
 }
 
+
+void RigFEM::MathUtilities::clampVector( EigVec& v, double maxElement )
+{
+	double maxAbsVal = v.cwiseAbs().maxCoeff();
+	if (maxAbsVal > maxElement)
+		v *= (maxElement / maxAbsVal);
+}

@@ -45,9 +45,9 @@ public:
 				sprintf(digitStr, "%lf ", mat.coeff(ithRow, ithCol));
 				str += digitStr;
 			}
-			str += ";\n";
+			str += "\n";
 		}
-		str += "\n];\n";
+		str += "];\n";
 		return str;
 	}
 
@@ -57,13 +57,14 @@ public:
 	// parse matlab matrix file(.m)
 	static bool fileToDense(const char* fileName, std::map<std::string, EigDense>& denseMap);
 	static bool eigDense2Sparse(const EigDense& denseMat, EigSparse& sparseMat);
+	static bool kronecker3X( EigSparse& src, EigSparse& dst );
 	
 	// vector functions
 	template<class VectorType>
 	static std::string vecToString( const VectorType&vec, const char*name )
 	{
 		std::string str;
-		str += (string(name) + "=[\n");
+		str += (string(name) + "=[");
 		char digitStr[50];
 		for (int i = 0; i < vec.size(); ++i)
 		{
@@ -71,7 +72,7 @@ public:
 			sprintf(digitStr, "%lf ", val);
 			str += digitStr;
 		}
-		str += "\n];\n";
+		str += "];\n";
 		return str;
 	}
 
@@ -122,7 +123,6 @@ public:
 
 private:
 	static int  skipMatlabComment(const std::string& str, int begPos);
-
 	static std::string s_whiteSpace;
 };
 
@@ -233,6 +233,8 @@ public:
 		return true;
 	}
 
+	// 把向量缩放，使其元素最大绝对值不超过maxElement
+	static void clampVector( EigVec& v, double maxElement );
 
 	static void testMath();
 };
