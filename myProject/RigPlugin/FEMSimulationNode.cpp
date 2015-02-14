@@ -23,7 +23,15 @@ const char* RigSimulationNode::m_maxIterName[2] = {"maxIteration", "maxIter"};
 const char* RigSimulationNode::m_simTypeName[2] = {"simulationType", "simType"};
 const char* RigSimulationNode::m_weightPathName[2]={"weightPath","wPath"};
 const char* RigSimulationNode::m_maxParamStepName[2] = {"maxParamStepEachIteration", "maxParamStep"};
+const char* RigSimulationNode::m_dispTypeName[2] = {"displayType", "dispType"};
+const char* RigSimulationNode::m_dispFemMeshName[2] = {"displayFemMesh","dispFem"};
+const char* RigSimulationNode::m_cgMinStepSizeName[2] = {"inverseStepToleranceOfCG","invCGStepSize"};
+const char* RigSimulationNode::m_maxCGIterName[2]={"maxIterationOfCG","maxCGIter"};
 
+MObject	RigSimulationNode::m_maxCGIter;
+MObject RigSimulationNode::m_dispFemMesh;
+MObject RigSimulationNode::m_cgMinStepSize;
+MObject RigSimulationNode::m_dispType;
 MObject RigSimulationNode::m_maxParamStep;
 MObject RigSimulationNode::m_weightPath;
 MObject RigSimulationNode::m_simType;
@@ -85,20 +93,25 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 
 		// 更新参数值
 		EigVec p;
-		if(m_simulator->getParam(curFrame, p))
+		if(m_simulator->getParam(curFrame, p) && getDispType() == DISP_SIM)
 			setParamPlug(&p[0], p.size());
 		else
 			setParamToInit();
 		double bbox[6];
-		bool res = m_simulator->showStatus(curFrame, bbox);
-		if (res)
+
+		MPlug dispFemMeshPlug = Global::getPlug(this, m_dispFemMeshName[0]);
+		bool isDrawFemMesh = (bool)dispFemMeshPlug.asShort();
+		if (isDrawFemMesh)
 		{
-			// 更新包围盒
-			double xformBox[6];
-			Utilities::transformBBox(bbox, bbox+3, matBuf, xformBox, xformBox+3);
-			m_box.expand(MPoint(xformBox[0], xformBox[1], xformBox[2]));
-			m_box.expand(MPoint(xformBox[3], xformBox[4], xformBox[5]));
- 
+			bool res = m_simulator->showStatus(curFrame, bbox);
+			if (res)
+			{
+				// 更新包围盒
+				double xformBox[6];
+				Utilities::transformBBox(bbox, bbox+3, matBuf, xformBox, xformBox+3);
+				m_box.expand(MPoint(xformBox[0], xformBox[1], xformBox[2]));
+				m_box.expand(MPoint(xformBox[3], xformBox[4], xformBox[5]));	 
+			}
 		}
 
 		glPopMatrix();
@@ -138,8 +151,8 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setHidden(false);
 	nAttr.setWritable(true); 
 	nAttr.setReadable(true);
-	nAttr.setSoftMin(0);
-	nAttr.setSoftMax(1);
+	nAttr.setSoftMin(-10);
+	nAttr.setSoftMax(10);
 	nAttr.setArray(true); 
 	nAttr.setUsesArrayDataBuilder(true);
 	nAttr.setAffectsAppearance(true);
@@ -231,7 +244,7 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setMax(1e15);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
-	m_minStepSize = nAttr.create(m_minStepSizeName[0], m_minStepSizeName[1], MFnNumericData::kDouble,100000, &s);
+	m_minStepSize = nAttr.create(m_minStepSizeName[0], m_minStepSizeName[1], MFnNumericData::kDouble,100, &s);
 	nAttr.setKeyable(false);
 	nAttr.setStorable(true);
 	nAttr.setHidden(false);
@@ -247,7 +260,7 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setHidden(false);
 	nAttr.setWritable(true); 
 	nAttr.setReadable(true);
-	nAttr.setMin(1);
+	nAttr.setMin(0);
 	nAttr.setMax(50);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
@@ -275,6 +288,14 @@ MStatus RigSimulationNode::initialize()
 	eAttr.setWritable(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
+	m_dispType = eAttr.create(m_dispTypeName[0], m_dispTypeName[1]);
+	eAttr.addField("Simulation", DISP_SIM);
+	eAttr.addField("Initial Value", DISP_INIT);
+	eAttr.setHidden(false);
+	eAttr.setReadable(true);
+	eAttr.setWritable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
 	m_weightPath = tAttr.create(m_weightPathName[0], m_weightPathName[1], MFnData::kString);
 	tAttr.setKeyable(true);
 	tAttr.setStorable(true);
@@ -293,6 +314,35 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setMax(1e7);
 	nAttr.setSoftMin(0.1);
 	nAttr.setSoftMax(3);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_dispFemMesh = nAttr.create(m_dispFemMeshName[0], m_dispFemMeshName[1], MFnNumericData::kBoolean, 1, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setAffectsAppearance(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_maxCGIter = nAttr.create(m_maxCGIterName[0], m_maxCGIterName[1], MFnNumericData::kInt,10, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0);
+	nAttr.setMax(50);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_cgMinStepSize = nAttr.create(m_cgMinStepSizeName[0], m_cgMinStepSizeName[1], MFnNumericData::kDouble,10, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0.001);
+	nAttr.setMax(1e7);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	s = addAttribute(m_param);
@@ -329,8 +379,17 @@ MStatus RigSimulationNode::initialize()
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_maxParamStep);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_dispType);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_dispFemMesh);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_maxCGIter);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_cgMinStepSize);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	s = attributeAffects(m_initParam, m_param);
+	s = attributeAffects(m_dispType, m_param);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	return s;
@@ -350,9 +409,11 @@ MStatus RigSimulationNode::setParamToInit()
 		MPlug inParamPlug = inParamArrayPlug.elementByLogicalIndex(logIdx, &s);
 		CHECK_MSTATUS_AND_RETURN_IT(s);
 
-		double val = 0;
+		double oldVal,val = 0;
 		inParamPlug.getValue(val);
-		paramPlug.setValue(val);
+		paramPlug.getValue(oldVal);
+		if (oldVal != val)
+			paramPlug.setValue(val);
 	}
 	return s;
 }
@@ -660,18 +721,22 @@ bool RigSimulationNode::updateTerminationCond()
 	if (RigSimulator* sim = dynamic_cast<RigSimulator*>(m_simulator))
 	{
 		MPlug maxIterPlug = Global::getPlug(this, m_maxIterName[0]);
+		MPlug maxCGIterPlug = Global::getPlug(this, m_maxCGIterName[0]);
 		MPlug minGradPlug = Global::getPlug(this, m_minGradSizeName[0]);
 		MPlug minStepPlug = Global::getPlug(this, m_minStepSizeName[0]);
+		MPlug cgMinStepPlug=Global::getPlug(this, m_cgMinStepSizeName[0]);
 		MPlug maxPStepPlug= Global::getPlug(this, m_maxParamStepName[0]);
 
 		int maxIter = maxIterPlug.asInt();
+		int maxCGIter = maxCGIterPlug.asInt();
 		double gradSize= 1.0 / minGradPlug.asDouble();
 		double stepSize= 1.0 / minStepPlug.asDouble();
+		double cgStepSize = 1.0 / cgMinStepPlug.asDouble();
 		double maxPStep= maxPStepPlug.asDouble();
 		NewtonSolver* solver = sim->getSolver();
 		if (solver)
 		{
-			solver->setTerminateCond(maxIter, stepSize, gradSize);
+			solver->setTerminateCond(maxIter, stepSize, gradSize, maxCGIter, cgStepSize);
 			solver->setIterationMaxStepSize(maxPStep);
 		}
 	}
@@ -728,6 +793,12 @@ bool RigSimulationNode::staticStepRig()
 	getInitParam(initParam);
 	m_simulator->staticStepRig(curFrame, initParam);
 	return true;
+}
+
+RigSimulationNode::DisplayType RigSimulationNode::getDispType()
+{
+	MPlug dispPlug = Global::getPlug(this, m_dispTypeName[0]);
+	return (DisplayType)dispPlug.asShort();
 }
 
 

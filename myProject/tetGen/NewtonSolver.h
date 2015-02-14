@@ -93,8 +93,8 @@ namespace RigFEM
 		virtual ~NewtonSolver(){}
 
 		// 终止条件
-		void setTerminateCond(int maxIter, double minStepSize, double minGradSize);
-		
+		void setTerminateCond( int maxIter, double minStepSize, double minGradSize, int maxCGIter, double minCGStepSize);
+
 		bool setInitStatus(const RigStatus&s);
 		const RigStatus& getFinalStatus()const{return m_finalStatus;}
 		virtual bool step()=0;
@@ -109,6 +109,8 @@ namespace RigFEM
 		int			m_maxIter;			// 最大迭代次数			
 		double		m_minStepSize;		// 最小步长，步长长度小于此值时迭代终止
 		double		m_minGradSize;		// 梯度长度小于此值时迭代终止
+		int			m_maxCGIter;		// 共轭梯度法最大迭代次数
+		double      m_minCGStepSize;	// 共轭梯度法中，梯度长度小于此值时迭代终止
 
 		double		m_iterMaxStepSize;	// 迭代过程中最大步长,每次参数各个分量的增量不得超过此值
 	};

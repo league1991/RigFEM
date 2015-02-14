@@ -55,3 +55,4 @@ typedef Eigen::VectorXd				EigVec;
 #include "NewtonSolver.h"
 #include "StatusRecorder.h"
 #include "FEMSystem.h"
+#include "RiggedSkinMesh.h"

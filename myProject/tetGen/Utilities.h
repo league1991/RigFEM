@@ -1,5 +1,10 @@
 #pragma once
 
+#define MAX(a,b) ((a)>(b)?(a):(b))
+#define MIN(a,b) ((a)<(b)?(a):(b))
+#define CLAMP_INT(minValue,maxValue,value) (MAX(int(minValue),MIN(int(value),int(maxValue))))
+#define CLAMP_FLOAT(minValue,maxValue,value) (MAX(float(minValue),MIN(float(value),float(maxValue))))
+#define CLAMP_DOUBLE(minValue,maxValue,value) (MAX(double(minValue),MIN(double(value),double(maxValue))))
 
 namespace RigFEM
 {

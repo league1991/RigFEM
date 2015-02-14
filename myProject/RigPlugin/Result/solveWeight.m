@@ -1,4 +1,4 @@
-function W = solveWeight(dataFileName, weightFileName)
+function W = solveWeight(dataFileName)
 
     eval(dataFileName);
 
@@ -27,7 +27,7 @@ function W = solveWeight(dataFileName, weightFileName)
     imagesc(W);
     size(W);
 	
-	saveCmd = sprintf('saveMatrix(''%s'', ''weight'', W'');', weightFileName);
+	saveCmd = sprintf('saveMatrix(''%sWeight.m'', ''weight'', W'');', dataFileName);
 	eval(saveCmd);
 end
 

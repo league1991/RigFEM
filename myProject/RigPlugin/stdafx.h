@@ -122,8 +122,13 @@ typedef Eigen::VectorXd				EigVec;
 #include "FEMSystem.h"
 #include "RiggedSkinMesh.h"
 #include "RigSimulator.h"
+#include "KDTree.h"
+#include "nanoflann.hpp"
 
 #include "globals.h"
 #include "GeneralRig.h"
 #include "FEMSimulationNode.h"
 #include "ExecSimulationCmd.h"
+#include "MeshCorrespondence.h"
+#include "MeshControlCmd.h"
+#include "DataSwitch.h"

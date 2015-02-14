@@ -33,7 +33,7 @@ MStatus RigSimulateCmd::doIt( const MArgList& args )
 	}
 	else
 		s = MGlobal::getActiveSelectionList(selection);				// 提取选中节点
-	if (!s)return MS::kSuccess;
+	if (!s)return MS::kFailure;
 
 	bool isInitFlagSet = argData.isFlagSet(m_initFlag[1], &s);
 	bool isStepFlagSet = argData.isFlagSet(m_stepFlag[1], &s); 
@@ -56,7 +56,7 @@ MStatus RigSimulateCmd::doIt( const MArgList& args )
 		{
 			RigSimulationNode* node = (RigSimulationNode*)nodeFn.userNode(&s);
 			if (!s)
-				return MS::kSuccess;
+				continue;
 
 			bool res = true;
 			MString name = nodeFn.name(&s);

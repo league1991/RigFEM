@@ -1,15 +1,17 @@
 #pragma once
 
-#define MAX(a,b) ((a)>(b)?(a):(b))
-#define MIN(a,b) ((a)<(b)?(a):(b))
-#define CLAMP_INT(minValue,maxValue,value) (MAX(int(minValue),MIN(int(value),int(maxValue))))
-#define CLAMP_FLOAT(minValue,maxValue,value) (MAX(float(minValue),MIN(float(value),float(maxValue))))
-#define CLAMP_DOUBLE(minValue,maxValue,value) (MAX(double(minValue),MIN(double(value),double(maxValue))))
 
 #define CMD_EXEC_SIMULATION			"rigSimulate"
+#define CMD_MESH_CONTROL			"cageDeform"
 
 #define NODE_FEM_SIMULATION_NAME	"rigSimulator"
 #define NODE_FEM_SIMULATION_ID		4500001
+
+#define NODE_CAGE_DEFORMER_NAME		"cageDeformer"
+#define NODE_CAGE_DEFORMER_ID		4500002
+
+#define NODE_DATA_SWITCH_NAME		"dataSwitch"
+#define NODE_DATA_SWITCH_ID			4500003
 
 class Global
 {
@@ -73,7 +75,8 @@ public:
 		tetMesh.numberoffacets = nPolys;
 		tetMesh.facetlist = new tetgenio::facet[nPolys];
 		MItMeshPolygon it(meshObj, &s);
-		for (int ithFace=0; !it.isDone(&s); it.next(),ithFace++)
+		int ithFace = 0;
+		for (; !it.isDone(&s); it.next())
 		{
 			MIntArray vIDs;
 			it.getVertices(vIDs);
@@ -99,7 +102,9 @@ public:
 			{
 				p.vertexlist[ithV] = vIDs[ithV];
 			}
+			ithFace++;
 		}
+		tetMesh.numberoffacets = ithFace;
 		return s;
 	}
 

@@ -241,6 +241,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\RiggedSkinMesh.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RiggedSkinMesh.h"
+				>
+			</File>
+			<File
 				RelativePath=".\StatusRecorder.cpp"
 				>
 			</File>

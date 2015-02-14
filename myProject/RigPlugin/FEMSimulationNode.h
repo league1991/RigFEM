@@ -9,6 +9,11 @@ public:
 		SIM_STANDARD = 0,
 		SIM_SKIN     = 1
 	};
+	enum DisplayType
+	{
+		DISP_SIM	 = 0,
+		DISP_INIT    = 1
+	};
 	RigSimulationNode(void);
 	virtual ~RigSimulationNode(void);
 	void postConstructor();
@@ -54,6 +59,7 @@ private:
 	int					getCurFrame();
 	MStatus				setParamToInit();		// 设置参数为初始参数
 	void				drawIcon();
+	DisplayType			getDispType();
 	
 	bool				updateDeriStepSize();	// 更新有限差商导数步长
 	bool				updateTerminationCond();// 更新终止条件
@@ -70,6 +76,8 @@ private:
 	static MObject		m_nu;					// 控制不同轴向变形相互影响的参数
 	static MObject		m_density;				// 密度
 	static MObject		m_timeStep;				// 时间步长
+	static MObject		m_dispType;				// 显示方式,直接显示模拟结果还是初始参数
+	static MObject		m_dispFemMesh;			// 是否显示fem网格
 
 	// 牛顿法参数
 	static MObject		m_deriStep;				// 参数求导时的有限差商大小
@@ -80,6 +88,9 @@ private:
 	static MObject		m_weightPath;			// 权重路径
 	static MObject		m_maxParamStep;			// 每次迭代参数的最大增量
 
+	// 共轭梯度法参数
+	static MObject		m_cgMinStepSize;		// 迭代的最小步长，若步长小于此值，终止迭代
+	static MObject		m_maxCGIter;			// 共轭梯度法最大迭代次数
 
 	static const char*  m_initParamName[2];
 	static const char*  m_paramName[2];
@@ -98,6 +109,10 @@ private:
 	static const char*  m_simTypeName[2];				// 模拟算法选择
 	static const char*	m_weightPathName[2];			// 权重路径
 	static const char*	m_maxParamStepName[2];			// 每次迭代参数的最大增量
+	static const char*  m_dispTypeName[2];
+	static const char*  m_dispFemMeshName[2];			// 是否显示fem网格
+	static const char*  m_cgMinStepSizeName[2];
+	static const char*  m_maxCGIterName[2];				// 共轭梯度法最大迭代次数
 
 	SimulationType		m_simTypeFlag;
 

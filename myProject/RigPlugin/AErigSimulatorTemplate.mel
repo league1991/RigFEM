@@ -91,22 +91,36 @@ global proc modifySimulatorControl(string $attrName)
 global proc AErigSimulatorTemplate(string $nodeName)
 {
 	editorTemplate -beginScrollLayout;
-		editorTemplate -beginLayout "Simulation" -collapse false;
+		editorTemplate -beginLayout "Tet Mesh Parameters" -collapse false;
 			editorTemplate -addControl "tetEdgeRatio";
 			editorTemplate -addControl "tetMaxVolume";
-			editorTemplate -addControl "meshTransform";
 			editorTemplate -addSeparator;
+			editorTemplate -addControl "displayFemMesh";
+			editorTemplate -addControl "meshTransform";
+		editorTemplate -endLayout;
+		
+		editorTemplate -beginLayout "FEM Parameters" -collapse false;
 			editorTemplate -addControl "youngModulus";
 			editorTemplate -addControl "nu";
 			editorTemplate -addControl "density";
+		editorTemplate -endLayout;
+		
+		editorTemplate -beginLayout "Solver Parameters" -collapse false;
 			editorTemplate -addControl "stepTime";
 			editorTemplate -addControl "derivativeStep";
+			
+			editorTemplate -addSeparator;
 			editorTemplate -addControl "inverseGradTolerance";
-			editorTemplate -addControl "inverseStepTolerance";
+			editorTemplate -label "inverse Newton Step Tolerance" -addControl "inverseStepTolerance";
+			editorTemplate -label "inverse CG. Step Tolerance" -addControl "inverseStepToleranceOfCG";
+			editorTemplate -label "max Newton Iteration" -addControl "maxIteration";
+			editorTemplate -label "max CG. Iteration" -addControl "maxIterationOfCG";			
 			editorTemplate -addControl "maxParamStepEachIteration";
-			editorTemplate -addControl "maxIteration";
+			
+			editorTemplate -addSeparator;
 			editorTemplate -addControl "savePath";
 			editorTemplate -addControl "simulationType";
+			editorTemplate -addControl "displayType";
 			editorTemplate -addControl "weightPath";
 			editorTemplate -callCustom "initSimulatorControl" "modifySimulatorControl" "noAttr";	
 		editorTemplate -endLayout;

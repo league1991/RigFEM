@@ -1,0 +1,162 @@
+// Copyright (C) 1997-2011 Autodesk, Inc., and/or its licensors.
+// All rights reserved.
+//
+// The coded instructions, statements, computer programs, and/or related
+// material (collectively the "Data") in these files contain unpublished
+// information proprietary to Autodesk, Inc. ("Autodesk") and/or its licensors,
+// which is protected by U.S. and Canadian federal copyright law and by
+// international treaties.
+//
+// The Data is provided for use exclusively by You. You have the right to use,
+// modify, and incorporate this Data into other products for purposes authorized 
+// by the Autodesk software license agreement, without fee.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. AUTODESK
+// DOES NOT MAKE AND HEREBY DISCLAIMS ANY EXPRESS OR IMPLIED WARRANTIES
+// INCLUDING, BUT NOT LIMITED TO, THE WARRANTIES OF NON-INFRINGEMENT,
+// MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, OR ARISING FROM A COURSE 
+// OF DEALING, USAGE, OR TRADE PRACTICE. IN NO EVENT WILL AUTODESK AND/OR ITS
+// LICENSORS BE LIABLE FOR ANY LOST REVENUES, DATA, OR PROFITS, OR SPECIAL,
+// DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES, EVEN IF AUTODESK AND/OR ITS
+// LICENSORS HAS BEEN ADVISED OF THE POSSIBILITY OR PROBABILITY OF SUCH DAMAGES.
+
+//
+//  Procedure Name:
+//	AEmeshSelector
+//
+//  Input Value:
+//	nodeName 
+//
+//  Output Value:
+//	None
+// 
+global proc clearAnimation(string $nodeName)
+{
+	string $srcAttr  = "";
+	string $tarAttr  = "";
+	string $bakeType = `optionMenuGrp -q -value bakeTypeMenu`;
+	if (0 == `strcmp $bakeType "1st In -> 2nd In"`)
+	{
+		$srcAttr = "inFirst";
+		$tarAttr = "inSecond";
+	}
+	else
+	{		
+		$srcAttr = "inSecond";
+		$tarAttr = "inFirst";
+	}
+	int $nAttr = `getAttr -size ($nodeName + "." + $srcAttr)`;
+	int $begTime = `intSliderGrp -query -value startTimeSlider`;
+	int $endTime = `intSliderGrp -query -value endTimeSlider`;
+	int $t = 0;
+	int $ithAttr = 0;
+
+	// clear current animations
+	for($ithAttr = 0; $ithAttr < $nAttr; $ithAttr++)
+	{    
+		cutKey -time ($begTime + ":" + $endTime) -clear -attribute ($tarAttr + "[" + $ithAttr + "]") $nodeName;
+	}
+}
+
+global proc bakeAnimation(string $nodeName)
+{
+	string $srcAttr  = "";
+	string $tarAttr  = "";
+	string $bakeType = `optionMenuGrp -q -value bakeTypeMenu`;
+	if (0 == `strcmp $bakeType "1st In -> 2nd In"`)
+	{
+		$srcAttr = "inFirst";
+		$tarAttr = "inSecond";
+	}
+	else
+	{		
+		$srcAttr = "inSecond";
+		$tarAttr = "inFirst";
+	}
+	int $nAttr = `getAttr -size ($nodeName + "." + $srcAttr)`;
+	int $begTime = `intSliderGrp -query -value startTimeSlider`;
+	int $endTime = `intSliderGrp -query -value endTimeSlider`;
+	float $valueTol = `floatSliderGrp -query -value valueToleranceSlider`;
+	float $timeTol  = `floatSliderGrp -query -value timeToleranceSlider`;
+	int $t = 0;
+	int $ithAttr = 0;
+
+	// clear current animations
+	for($ithAttr = 0; $ithAttr < $nAttr; $ithAttr++)
+	{    
+		cutKey -time ($begTime + ":" + $endTime) -clear -attribute ($tarAttr + "[" + $ithAttr + "]") $nodeName;
+	}
+	// set new keys
+	for($t = $begTime; $t <= $endTime; $t++)
+	{
+		currentTime $t;
+		for($ithAttr = 0; $ithAttr < $nAttr; $ithAttr++)
+		{
+			float $v = `getAttr ($nodeName + "." + $srcAttr + "[" + $ithAttr + "]")`;
+			setAttr ($nodeName + "." + $tarAttr + "[" + $ithAttr + "]") $v;
+			setKeyframe ($nodeName + "." + $tarAttr + "[" + $ithAttr + "]");
+		}
+	}
+	// simplify keys
+	for($ithAttr = 0; $ithAttr < $nAttr; $ithAttr++)
+	{
+		simplify -time ($begTime + ":" + $endTime) -tt $timeTol -vt $valueTol -attribute ($tarAttr + "[" + $ithAttr + "]") $nodeName;
+	}
+}
+
+global proc initDataSwitchControl(string $attrName)
+{
+	string $nodeName = `plugNode $attrName`;
+	setUITemplate -pst "attributeEditorTemplate";	
+		
+		intSliderGrp 	-label "Start Time" -field true
+					    -minValue 1 -maxValue 100
+						-fieldMinValue -1000000 -fieldMaxValue 1000000
+					    -value 1 startTimeSlider;
+								
+		intSliderGrp 	-label "End Time" -field true
+					    -minValue 1 -maxValue 100						
+						-fieldMinValue -1000000 -fieldMaxValue 1000000
+					    -value 100 endTimeSlider;
+								
+		floatSliderGrp 	-label "Value Tolerance" -field true
+					    -minValue 0.0 -maxValue 1
+					    -fieldMinValue 0 -fieldMaxValue 1.7e308
+					    -value 1e-2  valueToleranceSlider;
+								
+		floatSliderGrp 	-label "Time Tolerance" -field true
+					    -minValue 0.0 -maxValue 10
+					    -fieldMinValue 0 -fieldMaxValue 1.7e308
+					    -value 9  timeToleranceSlider;
+						
+		optionMenuGrp   -label "Bake Type" bakeTypeMenu;
+		menuItem 		-label "1st In -> 2nd In";
+		menuItem 		-label "2nd In -> 1st In";
+		
+		button          -label "Bake Animation"  -c ("bakeAnimation "  + $nodeName) bakeAnimationButton;
+		button          -label "Clear Animation" -c ("clearAnimation " + $nodeName) clearAnimationButton;
+	setUITemplate -ppt;
+}
+
+global proc modifyDataSwitchControl(string $attrName)
+{
+	string $nodeName = `plugNode $attrName`;	
+	button -e -c ("bakeAnimation " + $nodeName) bakeAnimationButton;
+	button -e -c ("clearAnimation " + $nodeName) clearAnimationButton;
+}
+
+global proc AEdataSwitchTemplate(string $nodeName)
+{
+	editorTemplate -beginScrollLayout;
+		editorTemplate -beginLayout "Input" -collapse false;
+			editorTemplate -addControl "source";
+			editorTemplate -addControl "inFirst";
+			editorTemplate -addControl "inSecond";
+		editorTemplate -endLayout;
+		
+		editorTemplate -beginLayout "Bake" -collapse false;
+			editorTemplate -callCustom "initDataSwitchControl" "modifyDataSwitchControl" "noAttr";	
+		editorTemplate -endLayout;		
+
+		editorTemplate -addExtraControls;		
+	editorTemplate -endScrollLayout;
+}

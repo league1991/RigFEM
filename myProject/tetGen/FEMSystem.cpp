@@ -19,7 +19,7 @@ void RiggedMesh::init()
 
 	char*  myArgv[] = {
 		"i:/Programs/VegaFEM-v2.1/myProject/tetGen/Debug/tetGen.exe",
-		"-pq1.3a0.5m",
+		"-pq1.3a0.5mR",
 		"model/torus.off"
 	};
 	int myArgc = sizeof(myArgv)/4;

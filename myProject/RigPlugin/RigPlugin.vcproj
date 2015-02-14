@@ -92,7 +92,7 @@
 			<Tool
 				Name="VCPostBuildEventTool"
 				Description="复制文件"
-				CommandLine="copy ..\Debug\RigPlugin.mll  ..\DLL\RigPlugin.mll&#x0D;&#x0A;copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;"
+				CommandLine="copy ..\Debug\RigPlugin.mll  ..\DLL\RigPlugin.mll&#x0D;&#x0A;copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration
@@ -174,7 +174,7 @@
 			<Tool
 				Name="VCPostBuildEventTool"
 				Description="复制文件"
-				CommandLine="copy ..\Release\RigPlugin.mll  ..\DLL\RigPlugin.mll&#x0D;&#x0A;copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;"
+				CommandLine="copy ..\Release\RigPlugin.mll  ..\DLL\RigPlugin.mll&#x0D;&#x0A;copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;"
 			/>
 		</Configuration>
 	</Configurations>
@@ -206,6 +206,10 @@
 			</File>
 			<File
 				RelativePath=".\GeneralRig.h"
+				>
+			</File>
+			<File
+				RelativePath="..\tetGen\nanoflann.hpp"
 				>
 			</File>
 			<File
@@ -261,6 +265,14 @@
 			Name="Maya"
 			>
 			<File
+				RelativePath=".\DataSwitch.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\DataSwitch.h"
+				>
+			</File>
+			<File
 				RelativePath=".\ExecSimulationCmd.cpp"
 				>
 			</File>
@@ -278,6 +290,22 @@
 			</File>
 			<File
 				RelativePath=".\globals.h"
+				>
+			</File>
+			<File
+				RelativePath=".\MeshControlCmd.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\MeshControlCmd.h"
+				>
+			</File>
+			<File
+				RelativePath=".\MeshCorrespondence.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\MeshCorrespondence.h"
 				>
 			</File>
 			<File

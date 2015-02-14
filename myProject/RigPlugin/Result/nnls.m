@@ -193,9 +193,11 @@ while(true)
         ind1=ind1(ind2);
         
         % test if removing last added, increase wsc to avoid loop
-        if(x(ind1)==0 && ind)
-            w=C'*(d-C*z);
-            wsc(ind1)=(abs(w(ind1))+wsc(ind1))*2;
+        if(ind)
+            if(x(ind1)==0)
+                w=C'*(d-C*z);
+                wsc(ind1)=(abs(w(ind1))+wsc(ind1))*2;
+            end
         end
         P(ind1)=false;
         x=x-alpha*(x-z);

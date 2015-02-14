@@ -1,0 +1,36 @@
+global proc initControl(string $attrName)
+{
+	string $nodeName = `plugNode $attrName`;
+	setUITemplate -pst "attributeEditorTemplate";
+		button -label "Compute Weight" -c ("cageDeform -init -name " + $nodeName) computeWeightButton;		
+	setUITemplate -ppt;
+}
+
+global proc modifyControl(string $attrName)
+{
+	string $nodeName = `plugNode $attrName`;
+	button -e -c ("cageDeform -init -name " + $nodeName) computeWeightButton;
+}
+ 
+global proc AEcageDeformerTemplate(string $nodeName)
+{
+	editorTemplate -beginScrollLayout;		
+		editorTemplate -beginLayout "Weight Scheme" -collapse false;
+			editorTemplate -addControl "maxNeighbourNum";
+			editorTemplate -addControl "weightPower";
+			editorTemplate -callCustom "initControl" "modifyControl" "noAttr";	
+		editorTemplate -endLayout;
+		
+		editorTemplate -suppress "outMesh";
+		editorTemplate -suppress "inControlMesh";
+		editorTemplate -suppress "refMesh";
+		editorTemplate -suppress "refControlMesh";
+		
+		editorTemplate -beginLayout "Node Behavior" -collapse true;
+			editorTemplate -addControl "nodeState";
+			editorTemplate -addControl "caching";
+		editorTemplate -endLayout;
+
+		editorTemplate -addExtraControls;	
+	editorTemplate -endScrollLayout;
+}
