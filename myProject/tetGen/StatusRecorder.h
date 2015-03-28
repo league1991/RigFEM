@@ -13,12 +13,18 @@ namespace RigFEM
 			STATUS_V,
 			STATUS_A,
 			STATUS_P,
+			STATUS_F,
+			STATUS_PV,
+			STATUS_TAR_P
 		};
 		RigStatus(){}
 		RigStatus(	const EigVec& q, 
 					const EigVec& v,
 					const EigVec& a,
-					const EigVec& param);
+					const EigVec& param,
+					const EigVec& paramV,
+					const EigVec& extF,
+					const EigVec& targetParam);
 		~RigStatus();
 
 		// 返回点数向量长度，若q v a长度不一，返回-1
@@ -28,7 +34,10 @@ namespace RigFEM
 		const EigVec& getQ()const{return m_q;}
 		const EigVec& getV()const{return m_v;}
 		const EigVec& getA()const{return m_a;}
+		const EigVec& getF()const{return m_f;}
 		const EigVec& getP()const{return m_param;}
+		const EigVec& getPV()const{return m_paramVelocity;}
+		const EigVec& getTarP()const{return m_targetParam;}
 		const EigVec* getByName(Status s)const;
 
 		bool matchLength(int pntVecLength, int paramVecLength)const;
@@ -41,8 +50,9 @@ namespace RigFEM
 		void mergeCustom(const RigStatus& s);
 
 	private:
-		EigVec	m_q, m_v, m_a;
-		EigVec	m_param;
+		EigVec	m_q, m_v, m_a, m_f;
+		EigVec	m_param, m_paramVelocity;
+		EigVec	m_targetParam;
 		map<string, double> m_customScalar;			// 一些自定义参数
 		map<string, EigVec> m_customVector;
 	};
@@ -57,6 +67,7 @@ namespace RigFEM
 			const vector<int>& intPntIdx, const vector<int>& surfPntIdx,
 			const vector<double>& initPntPos);
 		bool getStatus(int ithFrame, RigStatus& s)const;
+		const RigStatus* getStatus(int ithFrame);
 		bool setStatus(int ithFrame, const RigStatus& s);
 		void setPntIdx(const vector<int>& intPntIdx, const vector<int>& surfPntIdx);
 

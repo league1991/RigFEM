@@ -3,6 +3,11 @@
 #include "RiggedSkinMesh.h"
 using namespace RigFEM;
 
+const char* RigFEM::ParamSolver::s_initStepName = "initStep";
+const char* RigFEM::ParamSolver::s_dPName = "Pi-Pi-1";
+
+const char* RigFEM::NewtonSolver::s_targetParam = "targetParam";
+
 LineSearcher::~LineSearcher(void)
 {
 }
@@ -218,7 +223,13 @@ bool RigFEM::LineSearcher::setC( double c1, double c2 )
 bool RigFEM::PointParamSolver::step()
 {
 	PRINT_F("############################################ newton iteration begin. ############################################");
+	EigVec tarParam, tarParamVelocity;
+	getCurCtrlParam(tarParam, tarParamVelocity);
+	Global::showVector(tarParam, "tarParam");
 	m_fem->setStatus(m_initStatus);
+	m_fem->setControlTarget(tarParam, tarParamVelocity);
+	m_fem->updateExternalAndControlForce();
+
 	EigVec p,n;
 	m_fem->getDof(n,p);
 	double t = m_fem->getCurTime();
@@ -383,14 +394,8 @@ bool RigFEM::PointParamSolver::step()
 		PRINT_F("|dN|=%le |dP|=%le |resiN|∞=%le |resiP|∞=%le", dN.norm(), dP.norm(), resiN.maxCoeff(), resiP.maxCoeff());
 		PRINT_F("minStepSize = %e", m_minStepSize);
 		//Global::showVector(p, "p");
-		
-		//Utilities::saveVector(n, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/N.txt");
-		//Utilities::saveVector(p, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/P.txt");
-		//Utilities::loadVector(n, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/N_nodir.txt");
-		//Utilities::loadVector(p, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/ExperimentData/1.16/P_nodir.txt");
 
 		G0 = G;
-		PRINT_F("************ load N P ***************");
 	}
 	//file.close();
 	// 更新为最终迭代状态
@@ -405,17 +410,12 @@ bool RigFEM::PointParamSolver::step()
 
 	// 输出状态
 	PRINT_F("time: %.2lf", t);
-// 	PRINT_F("new params:");
-// 	for (int i = 0; i < nParam; ++i)
-// 	{
-// 		PRINT_F("%.2lf ", p[i]);
-// 	}
 	PRINT_F("############################################# newton iteration end. #############################################");
 
 	return true;
 }
 
-RigFEM::PointParamSolver::PointParamSolver( RiggedMesh* fem ) :m_fem(fem), m_lineSearch(fem)
+RigFEM::PointParamSolver::PointParamSolver( RiggedMesh* fem ) :NewtonSolver(fem),m_fem(fem), m_lineSearch(fem)
 {
 
 }
@@ -454,10 +454,10 @@ void RigFEM::NewtonSolver::setTerminateCond(
 	m_minCGStepSize = minCGStepSize;
 }
 
-RigFEM::NewtonSolver::NewtonSolver() :
+RigFEM::NewtonSolver::NewtonSolver(RiggedMesh* fem) :
 m_minStepSize(1e-3), m_minGradSize(1e-2), m_maxIter(10),
 m_maxCGIter(10), m_minCGStepSize(1e-2),
-m_iterMaxStepSize(1e0)
+m_iterMaxStepSize(1e0), m_femBase(fem)
 {
 
 }
@@ -473,11 +473,101 @@ void RigFEM::NewtonSolver::setIterationMaxStepSize( double maxStep )
 	m_iterMaxStepSize = maxStep;
 }
 
+bool RigFEM::NewtonSolver::getCurCtrlParam( EigVec& tarParam, EigVec& tarParamVelocity )
+{
+	if (!m_femBase || !m_femBase->getControlTargetFromRigNode(tarParam))
+	{
+		return false;
+	}
+
+	const RigStatus* s = m_recorder.getStatus(m_curFrame-1);
+	if (!s)
+	{
+		tarParamVelocity.setZero(tarParam.size());
+	}
+	else
+	{
+		Global::showVector(s->getTarP(), "lastTarget");
+		tarParamVelocity = (tarParam - s->getTarP()) / m_femBase->getStepTime();
+	}
+	return true;
+}
+
+void RigFEM::NewtonSolver::setStaticSolveMaxIter( int maxIter )
+{
+	m_maxStaticSolveIter = maxIter;
+}
+
+bool RigFEM::NewtonSolver::getRestStatus( RigStatus& status )
+{
+	int paramLength = m_recorder.getParamVecLength();
+	int pntLength = m_recorder.getPointVecLength();
+
+	if (paramLength <= 0 || pntLength <= 0)
+		return false;
+
+	EigVec q,v,a,f;
+	q.setZero(pntLength);
+	v.setZero(pntLength);
+	a.setZero(pntLength);
+	f.setZero(pntLength);
+	EigVec pv,tp;
+	pv.setZero(paramLength);
+	tp.setZero(paramLength);
+	status = RigStatus(q,v,a,m_restParam, pv, f, tp);
+	return true;
+}
+
+void RigFEM::NewtonSolver::setRestParam( EigVec& restParam )
+{
+	m_restParam = restParam;
+}
 
 
 RigFEM::PointParamSolver::~PointParamSolver()
 {
 
+}
+
+void RigFEM::PointParamSolver::setControlType( RigControlType type )
+{
+	m_controlType = type;
+	m_fem->setRigControlType(type);
+}
+
+bool RigFEM::PointParamSolver::staticSolve( const EigVec& curParam )
+{
+	RigStatus s;
+	bool res = m_recorder.getStatus(m_curFrame-1, s);
+	if (!res)
+		res =getRestStatus(s);
+	if (!res)
+		return false;
+
+	// 求解平衡位置
+	EigVec p = curParam;
+	EigVec q;
+	const EigVec* initQ = &s.getQ();		// 以上一帧的位置开始迭代，加快速度
+	EigVec tarParam, tarParamVelocity;
+	getCurCtrlParam(tarParam, tarParamVelocity);
+	m_fem->setControlTarget(tarParam, tarParamVelocity);
+	m_fem->updateExternalAndControlForce();
+	if(!m_fem->computeStaticPos(p, 0, q, m_maxStaticSolveIter, initQ))
+		return false;
+
+	// 记录结果
+	double dt = m_fem->getStepTime();
+	EigVec v = (q - s.getQ()) / dt;
+	EigVec a = (v - s.getV()) / dt;
+	EigVec pv= (p - s.getP()) / dt;
+	const EigVec& f = m_fem->getExternalForce();
+	EigVec tp;
+	if (!m_fem->getControlTargetFromRigNode(tp))
+	{
+		tp.setZero(curParam.size());
+	}
+	return m_recorder.setStatus(m_curFrame, RigStatus(q,v,a,p,pv,f, tp));
+	return true;
 }
 
 bool RigFEM::SimpleFunction::computeValueAndGrad( const EigVec& x, double* v /*= NULL*/, EigVec* grad /*= NULL*/ )
@@ -515,13 +605,17 @@ double RigFEM::SimpleFunction::computeFuncVal( double x )
 bool RigFEM::ParamSolver::step()
 {
 	PRINT_F("############################################ newton iteration begin. ############################################");
+	EigVec tarParam, tarParamVelocity;
+	getCurCtrlParam(tarParam, tarParamVelocity);
 	m_fem->setStatus(m_initStatus);
+	m_fem->setControlTarget(tarParam, tarParamVelocity);
+	m_fem->updateExternalAndControlForce();
+
 	EigVec P = m_initStatus.getP();
 	EigVec PkPk_1;
-	if (m_initStatus.getCustom("Pi-Pi-1", PkPk_1))
+	if (m_initStatus.getCustom(s_dPName, PkPk_1))
 	{
 		// 根据上一帧的变化趋势推测参数初始值
-		//Global::showVector(PkPk_1,"dP0");
 		P += PkPk_1;
 	}
 	double t = m_fem->getCurTime();
@@ -535,7 +629,7 @@ bool RigFEM::ParamSolver::step()
 	EigVec	 G,  dP, dG;
 	EigVec	 G0, dP0;				// 上一次迭代的值
 	double    initStepSize;
-	if (!m_initStatus.getCustom("initStep", initStepSize))
+	if (!m_initStatus.getCustom(s_initStepName, initStepSize))
 		initStepSize = 1e-6;
 	double	  stepSize = initStepSize;
 
@@ -550,8 +644,6 @@ bool RigFEM::ParamSolver::step()
 		isSucceed &= m_fem->computeValueAndGrad(P, tVec, &f, &G);
 		double GNorm = G.norm();
 		PRINT_F("f = %lf, |GP| = %lf, minGradSize = %e", f, GNorm, m_minGradSize);
-		//Global::showVector(G, "G");
-		//Global::showVector(P, "p");
 
 		if(G.norm() < m_minGradSize * 20) 
 			break;
@@ -579,7 +671,7 @@ bool RigFEM::ParamSolver::step()
 		int res = m_lineSearch.lineSearch(P, dP, tVec, stepSize, &f, &df);
 		if (ithIter == 0 && res == LineSearcher::LS_NONE)
 		{
-			resultStatus.addOrSetCustom("initStep", CLAMP_DOUBLE(1e-9, 1e-1, stepSize));
+			resultStatus.addOrSetCustom(s_initStepName, CLAMP_DOUBLE(1e-9, 1e-1, stepSize));
 		}
 		if (res == 0)
 		{
@@ -603,7 +695,7 @@ bool RigFEM::ParamSolver::step()
 	for (int ithIter = 0; ithIter < m_maxIter; ++ithIter)
 	{
 		// 计算当前q p值的函数值、梯度值和Hessian
-		PRINT_F("#########################  %dth Newton   #########################", ithIter);
+		PRINT_F("-------------------------  %dth Newton   -------------------------", ithIter);
 		int t0 = clock();
 		double   f;
 		isSucceed &= m_fem->computeValueAndGrad(P, tVec, &f, &G);
@@ -623,7 +715,13 @@ bool RigFEM::ParamSolver::step()
 			break;
 
 		// 计算Hessian
-		isSucceed &= m_fem->computeHessian(P, tVec, H);
+		switch (m_hessianType)
+		{
+		case HESSIAN_TRUE:
+			isSucceed &= m_fem->computeHessian(P, tVec, H);	break;
+		case HESSIAN_CONST_JACOBIAN:
+			isSucceed &= m_fem->computeApproxHessian(P, tVec, H); break;
+		}
 		int t2 = clock();
 		//Global::showMatrix(H, "H");
 		//PRINT_F("compute hessian:%f",(t2-t1)/1000.f);
@@ -689,7 +787,7 @@ bool RigFEM::ParamSolver::step()
 	m_paramResult.push_back(P);
 	m_finalStatus = m_fem->getStatus();
 	m_finalStatus.mergeCustom(resultStatus);
-	m_finalStatus.addOrSetCustom("Pi-Pi-1", m_finalStatus.getP() - m_initStatus.getP());
+	m_finalStatus.addOrSetCustom(s_dPName, m_finalStatus.getP() - m_initStatus.getP());
 
 	// 输出状态
 	PRINT_F("time: %.2lf", t);
@@ -699,7 +797,16 @@ bool RigFEM::ParamSolver::step()
 	return true;
 }
 
-RigFEM::ParamSolver::ParamSolver( RiggedSkinMesh* fem /*= NULL*/ ) :m_fem(fem), m_lineSearch(fem)
+RigFEM::ParamSolver::ParamSolver( 
+	RiggedSkinMesh* fem /*= NULL*/ , 
+	HessianType hessianType) :NewtonSolver(fem),m_fem(fem), m_lineSearch(fem), m_hessianType(hessianType)
 {
 
 }
+
+void RigFEM::ParamSolver::setControlType( RigControlType type )
+{
+	m_controlType = type;
+	m_fem->setRigControlType(type);
+}
+

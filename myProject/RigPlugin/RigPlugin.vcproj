@@ -174,7 +174,7 @@
 			<Tool
 				Name="VCPostBuildEventTool"
 				Description="¸´ÖÆÎÄ¼þ"
-				CommandLine="copy ..\Release\RigPlugin.mll  ..\DLL\RigPlugin.mll&#x0D;&#x0A;copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;"
+				CommandLine="copy ..\Release\RigPlugin.mll  ..\DLL\RigPlugin.mll&#x0D;&#x0A;copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;&#x0D;&#x0A;"
 			/>
 		</Configuration>
 	</Configurations>
@@ -286,6 +286,10 @@
 			</File>
 			<File
 				RelativePath=".\FEMSimulationNode.h"
+				>
+			</File>
+			<File
+				RelativePath=".\globals.cpp"
 				>
 			</File>
 			<File

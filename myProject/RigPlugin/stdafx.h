@@ -37,6 +37,7 @@
 #include <maya/MMatrix.h>
 #include <maya/MArgList.h>
 #include <maya/MAnimControl.h>
+#include <maya/MVectorArray.h>
 
 #include <maya/MFnNurbsSurfaceData.h>
 #include <maya/MFnNurbsSurface.h>
@@ -52,6 +53,11 @@
 #include <maya/MFnEnumAttribute.h>
 #include <maya/MFnIntArrayData.h>
 #include <maya/MFnPointArrayData.h>
+#include <maya/MFnVectorArrayData.h>
+#include <maya/MFnUnitAttribute.h>
+#include <maya/MFnCompoundAttribute.h>
+#include <maya/MFnDoubleArrayData.h>
+
 
 #include <maya/MItMeshVertex.h>
 #include <maya/MItMeshEdge.h>
@@ -122,7 +128,6 @@ typedef Eigen::VectorXd				EigVec;
 #include "FEMSystem.h"
 #include "RiggedSkinMesh.h"
 #include "RigSimulator.h"
-#include "KDTree.h"
 #include "nanoflann.hpp"
 
 #include "globals.h"

@@ -41,6 +41,14 @@ namespace RigFEM
 
 		// 有限差商计算当前参数下的 d2S / (dPi * dPj)  其中S为点向量，Pi、Pj为第i、j个参数
 		virtual bool computeJacobianDerivative(int i, int j, double* res);
+
+		// 计算外力
+		virtual bool computeExternalForce(const EigVec& pos, const EigVec& vel, const EigVec& m, 
+			double time, EigVec& extForce){return false;}
+		
+		virtual bool getControlGain(EigVec& propGain, EigVec& deriGain){return false;}
+		virtual bool getControlParams(EigVec& targetParam, EigVec& propGain, EigVec& deriGain){return false;}
+		virtual bool getControlTarget(EigVec& targetParam){return false;}
 	protected:
 		double	m_delta;											// 有限差商求导时的微小位移
 		int     m_nParam;											// 参数个数

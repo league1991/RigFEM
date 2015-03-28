@@ -42,7 +42,6 @@ public:
 	bool				staticStepRig();			// 静态模拟
 	MStatus				setParamPlug( const double* param, int nParam);
 
-
 	// 用于测试
 	void				testRig();	
 	bool				testHessian(double noiseN, double noiseP);					// 测试当前帧的Hessian
@@ -50,6 +49,12 @@ public:
 
 	// 保存数据
 	bool				saveSimulationData(const char* fileName);
+	bool				computeExternalForce(const EigVec& pos, const EigVec& vel, const EigVec& m, 
+											 double time, EigVec& extForce);
+
+	bool				getControlParams(EigVec& targetParam, EigVec& propGain, EigVec& deriGain);
+	bool				getControlGain(EigVec& propGain, EigVec& deriGain);
+	bool				getControlTarget(EigVec& targetParam);
 private:
 	
 	int					getNumParam();			// 获取当前有效的参数个数
@@ -63,6 +68,12 @@ private:
 	
 	bool				updateDeriStepSize();	// 更新有限差商导数步长
 	bool				updateTerminationCond();// 更新终止条件
+
+	// 节点属性
+	void				printFieldData();
+	MStatus				getInputForce(EigVec& force);
+	MStatus				testField();
+
 
 	MBoundingBox		m_box;
 
@@ -78,6 +89,7 @@ private:
 	static MObject		m_timeStep;				// 时间步长
 	static MObject		m_dispType;				// 显示方式,直接显示模拟结果还是初始参数
 	static MObject		m_dispFemMesh;			// 是否显示fem网格
+	static MObject      m_fieldForceFactor;		// 力线长度因子
 
 	// 牛顿法参数
 	static MObject		m_deriStep;				// 参数求导时的有限差商大小
@@ -86,11 +98,26 @@ private:
 	static MObject		m_minGradSize;			// 最小的梯度值，如梯度小于此值，终止迭代
 	static MObject		m_simType;				// 模拟算法选择
 	static MObject		m_weightPath;			// 权重路径
+	static MObject		m_resultPath;			// 结果路径
 	static MObject		m_maxParamStep;			// 每次迭代参数的最大增量
 
 	// 共轭梯度法参数
 	static MObject		m_cgMinStepSize;		// 迭代的最小步长，若步长小于此值，终止迭代
 	static MObject		m_maxCGIter;			// 共轭梯度法最大迭代次数
+
+	// maya场参数
+	static MObject		m_inputForce;			// 场的输入力（含内部与表面节点）
+	static MObject		m_fieldData;			// 输出的有限元节点状态
+	static MObject		m_fieldDataPosition;	// 位置子属性
+	static MObject		m_fieldDataVelocity;	// 速度子属性
+	static MObject		m_fieldDataMass;		// 质量子属性
+	static MObject		m_fieldDataDeltaTime;	// 时间子属性
+
+	// PD自动控制参数
+	static MObject		m_controlType;			// 自动控制开关
+	static MObject		m_targetParam;			// 期望的状态	
+	static MObject		m_proportionalGain;		// 比例控制强度
+	static MObject		m_derivativeGainRatio;	// 微分控制强度比率
 
 	static const char*  m_initParamName[2];
 	static const char*  m_paramName[2];
@@ -108,18 +135,25 @@ private:
 	static const char*  m_minGradSizeName[2];			// 最小的梯度值，如梯度小于此值，终止迭代
 	static const char*  m_simTypeName[2];				// 模拟算法选择
 	static const char*	m_weightPathName[2];			// 权重路径
+	static const char*  m_resultPathName[2];			// 结果路径
 	static const char*	m_maxParamStepName[2];			// 每次迭代参数的最大增量
 	static const char*  m_dispTypeName[2];
 	static const char*  m_dispFemMeshName[2];			// 是否显示fem网格
 	static const char*  m_cgMinStepSizeName[2];
 	static const char*  m_maxCGIterName[2];				// 共轭梯度法最大迭代次数
+	static const char*  m_inputForceName[2];			// 场的输入力
+	static const char*  m_fieldDataName[2];				// 输出的有限元节点状态
+	static const char*  m_fieldDataPositionName[2];		// 子属性
+	static const char*  m_fieldDataVelocityName[2];
+	static const char*  m_fieldDataMassName[2];
+	static const char*  m_fieldDataDeltaTimeName[2];
+	static const char*  m_fieldForceFactorName[2];
+	static const char*	m_controlTypeName[2];			// 自动控制开关
+	static const char*	m_targetParamName[2];			// 期望的状态	
+	static const char*	m_proportionalGainName[2];		// 比例控制强度
+	static const char*	m_derivativeGainRatioName[2];	// 微分控制强度
 
 	SimulationType		m_simTypeFlag;
-
-// 	RigFEM::GeneralRig*	m_rig;					// 封装了节点求值机制	
-// 	RigFEM::RiggedMesh*	m_rigMesh;				// fem 数据
-// 	RigFEM::NewtonSolver* m_solver;				// 求解器
-// 	RigFEM::StatusRecorder m_recorder;			// 记录求解状态
 
 	RigFEM::SimulatorBase*	m_simulator;				// 模拟器
 };

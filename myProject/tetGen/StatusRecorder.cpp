@@ -11,7 +11,7 @@ StatusRecorder::~StatusRecorder(void)
 
 int RigFEM::RigStatus::getPointVecLength() const
 {
-	if (m_q.size() != m_v.size() || m_v.size() != m_a.size())
+	if (m_q.size() != m_v.size() || m_v.size() != m_a.size() || m_a.size() != m_f.size())
 	{
 		return -1;
 	}
@@ -28,7 +28,8 @@ bool RigFEM::RigStatus::matchLength( int pntVecLength, int paramVecLength )const
 	return (m_q.size() == pntVecLength) &&
 		(m_v.size() == pntVecLength) &&
 		(m_a.size() == pntVecLength) &&
-		(m_param.size() == paramVecLength);
+		(m_param.size() == paramVecLength) &&
+		(m_paramVelocity.size() == paramVecLength);
 }
 
 const EigVec* RigFEM::RigStatus::getByName( Status s ) const
@@ -43,6 +44,12 @@ const EigVec* RigFEM::RigStatus::getByName( Status s ) const
 		return &m_a;
 	case STATUS_P:
 		return &m_param;
+	case STATUS_F:
+		return &m_f;
+	case STATUS_PV:
+		return &m_paramVelocity;
+	case STATUS_TAR_P:
+		return &m_targetParam;
 	default:
 		return NULL;
 	}
@@ -52,7 +59,11 @@ RigFEM::RigStatus::~RigStatus()
 {
 }
 
-RigFEM::RigStatus::RigStatus( const EigVec& q, const EigVec& v, const EigVec& a, const EigVec& param ) :m_q(q), m_v(v), m_a(a), m_param(param)
+RigFEM::RigStatus::RigStatus( 
+	const EigVec& q, const EigVec& v, const EigVec& a, 
+	const EigVec& param, const EigVec& paramVelocity, const EigVec& f,
+	const EigVec& targetParam) :
+m_q(q), m_v(v), m_a(a), m_param(param), m_f(f), m_paramVelocity(paramVelocity), m_targetParam(targetParam)
 {
 }
 
@@ -112,6 +123,16 @@ bool RigFEM::StatusRecorder::getStatus( int ithFrame, RigStatus& s ) const
 	}
 	s = m_statusList[ithFrame - m_startFrame];
 	return true;
+}
+
+const RigStatus* RigFEM::StatusRecorder::getStatus( int ithFrame )
+{
+	if (ithFrame < m_startFrame || 
+		ithFrame >= m_startFrame + m_statusList.size())
+	{
+		return NULL;
+	}
+	return &m_statusList[ithFrame - m_startFrame];
 }
 
 

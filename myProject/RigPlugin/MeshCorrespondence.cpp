@@ -248,6 +248,14 @@ MStatus CageDeformerNode::computeNewPnt()
 	outMeshFn.copy(refMeshObj, outMeshObj,&s);
 	outMeshFn.setObject(outMeshObj);
 
+
+	if (refControlMeshPnt.rows() == inControlMeshPnt.rows() &&			
+		(m_weightMat.rows() != refMeshPnt.rows() ||
+		m_weightMat.cols() != refControlMeshPnt.rows()))
+	{
+		computeWeight();
+	}
+
 	if (refControlMeshPnt.rows() != inControlMeshPnt.rows() ||			
 		m_weightMat.rows() != refMeshPnt.rows() ||
 		m_weightMat.cols() != refControlMeshPnt.rows())

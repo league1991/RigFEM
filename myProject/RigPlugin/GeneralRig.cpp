@@ -83,3 +83,41 @@ MStatus RigFEM::GeneralRig::getMesh( MObject& meshObj )
 	meshObj = meshPlug.asMObject(MDGContext::fsNormal, &s);
 	return s;
 }
+
+bool RigFEM::GeneralRig::computeExternalForce( const EigVec& pos, const EigVec& vel, const EigVec& m, double time, EigVec& extForce )
+{
+	if (!m_node)
+		return false;
+
+	return m_node->computeExternalForce(pos, vel, m, time, extForce);
+}
+
+bool RigFEM::GeneralRig::getControlParams( EigVec& targetParam, EigVec& propGain, EigVec& deriGain )
+{
+	if (!m_node)
+	{
+		return false;
+	}
+
+	return m_node->getControlParams(targetParam, propGain, deriGain);
+}
+
+bool RigFEM::GeneralRig::getControlTarget( EigVec& targetParam )
+{
+	if (!m_node)
+	{
+		return false;
+	}
+
+	return m_node->getControlTarget(targetParam);
+}
+
+bool RigFEM::GeneralRig::getControlGain( EigVec& propGain, EigVec& deriGain )
+{
+	if (!m_node)
+	{
+		return false;
+	}
+
+	return m_node->getControlGain(propGain, deriGain);
+}

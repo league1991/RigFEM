@@ -3,7 +3,12 @@
 
 using namespace RigFEM;
 
-RiggedMesh::RiggedMesh(void):m_tetMesh(NULL),  m_forceModel(NULL), m_h(0.03), m_t(0), m_tangentStiffnessMatrix(NULL),  m_modelwrapper(NULL), m_nTotPnt(0), m_nIntPnt(0), m_nSurfPnt(0), m_nParam(0),m_transRig(NULL)
+RiggedMesh::RiggedMesh(void):
+m_tetMesh(NULL),  m_forceModel(NULL), 
+m_h(0.03), m_t(0), m_tangentStiffnessMatrix(NULL),  
+m_modelwrapper(NULL), 
+m_nTotPnt(0), m_nIntPnt(0), m_nSurfPnt(0), m_nParam(0),
+m_rigObj(NULL), m_controlType(CONTROL_NONE)
 {
 }
 
@@ -59,8 +64,8 @@ void RiggedMesh::init()
 	buildVegaData();
 
 	// 设置rig初始点
-	m_transRig = new TransformRig();
-	if (TransformRig* transRig = dynamic_cast<TransformRig*>(m_transRig))
+	m_rigObj = new TransformRig();
+	if (TransformRig* transRig = dynamic_cast<TransformRig*>(m_rigObj))
 	{
 		double* oriPnts = new double[m_nSurfPnt*3];
 		double* p = oriPnts;
@@ -76,17 +81,19 @@ void RiggedMesh::init()
 	}
 
 	// 计算当前参数下的配置
-	m_transRig->keyParam(0, MathUtilities::zero);
-	m_transRig->keyParam(1, MathUtilities::zero);
-	m_transRig->keyParam(2, MathUtilities::absSin);
-	m_transRig->keyParam(3, MathUtilities::zero);
-	m_transRig->keyParam(4, MathUtilities::zero);
-	m_transRig->keyParam(5, MathUtilities::zero);
+	m_rigObj->keyParam(0, MathUtilities::zero);
+	m_rigObj->keyParam(1, MathUtilities::zero);
+	m_rigObj->keyParam(2, MathUtilities::absSin);
+	m_rigObj->keyParam(3, MathUtilities::zero);
+	m_rigObj->keyParam(4, MathUtilities::zero);
+	m_rigObj->keyParam(5, MathUtilities::zero);
 
-	m_nParam = m_transRig->getNFreeParam();
+	m_nParam = m_rigObj->getNFreeParam();
 	m_param.setZero(m_nParam);
+	m_controlForce.setZero(m_nParam);
+	m_paramVelocity.setZero(m_nParam);
 	m_param[0] = m_param[1] = m_param[2] = 1.0;
-	m_transRig->setFreeParam(&m_param[0]);
+	m_rigObj->setFreeParam(&m_param[0]);
 
 	computeRig();
 }
@@ -293,7 +300,7 @@ bool RiggedMesh::buildVegaData(double E, double nu, double density)
 	IsotropicHyperelasticFEM* defModel = new IsotropicHyperelasticFEM(m_tetMesh, hookeanMat);
 	m_forceModel = new IsotropicHyperelasticFEMForceModel(defModel);*/
 
-	m_q = m_v = m_a = m_force = EigVec::Constant(nPnts*3, 0.0);
+	m_q = m_v = m_a = m_force = m_extForce = EigVec::Constant(nPnts*3, 0.0);
 	m_mass = EigVec(nPnts);
 	GenerateMassMatrix::computeVertexMasses(m_tetMesh, &m_mass[0]);
 	if (!m_tangentStiffnessMatrix)
@@ -356,7 +363,7 @@ bool RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigS
 
 	// 构建矩阵Hnp = - dFn/ds * J
 	EigDense J;
-	res &= m_transRig->computeJacobian(J);
+	res &= m_rigObj->computeJacobian(J);
 	EigSparse dFns;
 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx, m_surfDofIdx, dFns);
 	Hnp = -1.f * dFns * J;
@@ -393,7 +400,7 @@ bool RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigS
 			for (int l = 0; l < m_nParam; ++l)
 			{
 				double& Hppil = Hpp(i,l);
-				res &= m_transRig->computeJacobianDerivative(i,l, &jacobianDeri[0]);
+				res &= m_rigObj->computeJacobianDerivative(i,l, &jacobianDeri[0]);
 				for (int k = 0; k < m_nSurfPnt*3; ++k)
 				{
 					Hppil += jacobianDeri[k] * sResi[k];
@@ -406,6 +413,15 @@ bool RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigS
 					}
 					Hppil += J(k,i) *(mass * J(k,l) * invH2 - v);
 				}
+			}
+		}
+
+		// 隐式控制的情况下，控制力是位移差和速度差的线性函数
+		if (m_controlType == CONTROL_IMPLICIT_FORCE)
+		{
+			for (int ithP = 0; ithP < m_nParam; ++ithP)
+			{
+				Hpp(ithP, ithP) += m_propGain[ithP] + m_deriGain[ithP] / m_h;
 			}
 		}
 	}
@@ -488,8 +504,8 @@ bool RiggedMesh::computeQ( const double* p, double t, double* q )
 bool RiggedMesh::computeSurfOffset( const double* p, double t, EigVec& s )
 {
 	s = EigVec(m_nSurfPnt*3);
-	m_transRig->setTime(t);
-	bool res = m_transRig->computeValue(&s[0], p);
+	m_rigObj->setTime(t);
+	bool res = m_rigObj->computeValue(&s[0], p);
 	if (!res)
 		return res;
 	for (int i = 0; i < m_nSurfPnt; ++i)
@@ -520,7 +536,7 @@ bool RiggedMesh::computeGradient( const EigVec& n, const EigVec& p, double t, Ei
 	EigVec f(m_nTotPnt*3);
 	m_forceModel->GetInternalForce(&q[0], &f[0]);
 	f *= -1.0;
-	EigVec residual = ma - f;
+	EigVec residual = ma - f - m_extForce;
 
 	gn.setZero(m_nIntPnt*3);
 	for (int ithN = 0; ithN < m_nIntPnt; ++ithN)
@@ -540,8 +556,19 @@ bool RiggedMesh::computeGradient( const EigVec& n, const EigVec& p, double t, Ei
 		gs[ithS*3+2] = residual[idx*3+2];
 	}
 	EigDense J;
-	res &= m_transRig->computeJacobian(J);
+	res &= m_rigObj->computeJacobian(J);
 	gs = J.transpose() * gs;
+	if (m_controlType == CONTROL_EXPLICIT_FORCE)
+	{
+		gs -= m_controlForce;
+	}
+	else if (m_controlType == CONTROL_IMPLICIT_FORCE)
+	{
+		computeControlForce(m_controlForce, p);
+		gs -= m_controlForce;
+	}
+
+
 	return res;
 }
 
@@ -670,10 +697,10 @@ double RiggedMesh::computeValue( const EigVec& n, const EigVec& p, double t)
 	EigVec q(m_nTotPnt*3);
 	computeQ(&n[0], &p[0], t, &q[0]);
 
-	return computeValue(q);
+	return computeValue(q,p);
 }
 
-double RiggedMesh::computeValue( const EigVec& q )
+double RiggedMesh::computeValue( const EigVec& q, const EigVec& p )
 {
 	// 计算动能增量
 	double kinetic = 0;
@@ -688,7 +715,22 @@ double RiggedMesh::computeValue( const EigVec& q )
 
 	// 计算弹性能量
 	double elasticEnergy = m_modelwrapper->computeElasticEnergy(&q[0]);
-	return elasticEnergy + kinetic;
+
+	// 计算外力能量 = -外力做功 = -f * (q - m_q)
+	double externalEnergy = m_extForce.dot(m_q-q);
+	double totEnergy = elasticEnergy + kinetic + externalEnergy;
+	if (m_controlType == CONTROL_EXPLICIT_FORCE)
+	{
+		double ctrlEnergy     = m_controlForce.dot(m_param);
+		totEnergy -= ctrlEnergy;
+	}
+	else if (m_controlType == CONTROL_IMPLICIT_FORCE)
+	{
+		computeControlForce(m_controlForce, p);
+		double ctrlEnergy     = m_controlForce.dot(m_param);
+		totEnergy -= ctrlEnergy;
+	}
+	return totEnergy;
 }
 
 bool RiggedMesh::testValue()
@@ -769,7 +811,7 @@ bool RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& param,  doub
 	// 计算函数值
 	if (v)
 	{
-		*v = computeValue(q);
+		*v = computeValue(q, p);
 	}
 
 	// 计算梯度值
@@ -788,7 +830,7 @@ bool RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& param,  doub
 		EigVec f(m_nTotPnt*3);
 		m_forceModel->GetInternalForce(&q[0], &f[0]);
 		f *= -1.0;
-		EigVec residual = ma - f;
+		EigVec residual = ma - f - m_extForce;
 
 		EigVec gn(m_nIntPnt*3);
 		for (int ithN = 0; ithN < m_nIntPnt; ++ithN)
@@ -808,8 +850,17 @@ bool RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& param,  doub
 			gs[ithS*3+2] = residual[idx*3+2];
 		}
 		EigDense J;
-		res &= m_transRig->computeJacobian(J);
+		res &= m_rigObj->computeJacobian(J);
 		gs = J.transpose() * gs;
+		if (m_controlType == CONTROL_EXPLICIT_FORCE)
+		{
+			gs -= m_controlForce;
+		}
+		else if (m_controlType == CONTROL_IMPLICIT_FORCE)
+		{
+			computeControlForce(m_controlForce, p);
+			gs -= m_controlForce;
+		}
 
 		grad->resizeLike(x);
 		EigVec& g = *grad;
@@ -821,6 +872,7 @@ bool RiggedMesh::computeValueAndGrad(const EigVec& x, const EigVec& param,  doub
 		{
 			g[i+m_nIntPnt*3] = gs[i];
 		}
+
 	}
 	return res;
 }
@@ -831,7 +883,9 @@ void RiggedMesh::setDof( EigVec&n, EigVec&p, bool proceedTime /*= true*/ )
 	computeQ(&n[0], &p[0], m_t, &q[0]);
 	EigVec v = (q - m_q) / m_h;
 	EigVec a = (v - m_v) / m_h; 
+	EigVec pV= (p - m_param) / m_h;
 	m_param = p;
+	m_paramVelocity = pV;
 	m_v = v;
 	m_a = a;
 	m_q = q;
@@ -930,10 +984,11 @@ bool RiggedMesh::init( tetgenio& surfMesh, RigBase* rig, double maxVolume /*= 1*
 	}
 
 	// 设置rig参数
-	m_transRig = rig;
+	m_rigObj = rig;
 	m_nParam = rig->getNFreeParam();
 	m_param.resize(m_nParam);
 	rig->getFreeParam(&m_param[0]);
+	m_paramVelocity.setZero(m_nParam);
 	PRINT_F("Initialized completed.\n internal Pnts:%d\n surface Pnts:%d\n params:%d\n", 
 			m_nIntPnt, m_nSurfPnt, m_nParam);
 	return true;
@@ -941,7 +996,7 @@ bool RiggedMesh::init( tetgenio& surfMesh, RigBase* rig, double maxVolume /*= 1*
 
 void RiggedMesh::clear()
 {
-	m_transRig = NULL;
+	m_rigObj = NULL;
 
 	m_out.deinitialize();
 	m_out.initialize();
@@ -972,7 +1027,7 @@ void RiggedMesh::clear()
 
 RigStatus RiggedMesh::getStatus() const
 {
-	return RigStatus(m_q, m_v, m_a, m_param);
+	return RigStatus(m_q, m_v, m_a, m_param, m_paramVelocity, m_extForce, m_targetParam);
 }
 
 bool RiggedMesh::setStatus( const RigStatus& s )
@@ -984,24 +1039,29 @@ bool RiggedMesh::setStatus( const RigStatus& s )
 		pntLength == m_q.size() &&
 		pntLength == m_v.size() &&
 		pntLength == m_a.size() &&
-		paramLength == m_param.size())
+		paramLength == m_param.size() &&
+		paramLength == m_paramVelocity.size())
 	{
 		m_q = s.getQ();
 		m_v = s.getV();
 		m_a = s.getA();
 		m_param = s.getP();
+		m_paramVelocity = s.getPV();
+		m_extForce = s.getF();
+		m_targetParam = s.getTarP();
 		return true;
 	}
 	return false;
 }
 
-bool RiggedMesh::showStatus( RigStatus& s , double* bbox)
+bool RiggedMesh::showStatus( RigStatus& s, const MeshDispConfig& config , double* bbox)
 {
 	if (!s.matchLength(m_nTotPnt*3, m_nParam))
 		return false;
 
 	glPushAttrib(GL_CURRENT_BIT);
 	const EigVec& q = s.getQ();
+	const EigVec& f = s.getF();
 
 	// 画点
 	glPointSize(3.f);
@@ -1039,6 +1099,28 @@ bool RiggedMesh::showStatus( RigStatus& s , double* bbox)
 		}
 	}
 	glEnd();
+
+	// 画力
+	double extForceFactor = config.m_extForceDispFactor;
+	if (extForceFactor >= 0)
+	{
+		glColor3f(1,1,0);
+		glBegin(GL_LINES);
+		for (int i = 0; i < m_nTotPnt; ++i)
+		{
+			int i3 = i*3;
+			Vec3d v = *m_tetMesh->getVertex(i);
+			v[0] += q[i3];
+			v[1] += q[i3+1];
+			v[2] += q[i3+2];
+			glVertex3d(v[0], v[1], v[2]);
+			v[0] += f[i3] * extForceFactor;
+			v[1] += f[i3+1] * extForceFactor;
+			v[2] += f[i3+2] * extForceFactor;
+			glVertex3d(v[0], v[1], v[2]);
+		}
+		glEnd();
+	}
 
 	// 画边
 	glColor3f(0.5, 0.5,0.5);
@@ -1260,9 +1342,147 @@ bool RigFEM::RiggedMesh::computeStaticPos( const EigVec& p, double t, EigVec& q,
 	return true;
 }
 
+const EigVec& RigFEM::RiggedMesh::getExternalForce() const
+{
+	return m_extForce;
+}
+
+bool RigFEM::RiggedMesh::setExternalForce( const EigVec&f )
+{
+	if (f.size() == m_nTotPnt*3)
+	{
+		m_extForce = f;
+		return true;
+	}
+	return false;
+}
+
+const EigVec& RigFEM::RiggedMesh::getMass() const
+{
+	return m_mass;
+}
+
+void RigFEM::RiggedMesh::getVertexPosition( EigVec& pos )
+{
+	pos = m_q;
+
+	for (int i = 0; i < m_intPntIdx.size(); ++i)
+	{
+		int idx = m_intPntIdx[i];
+		int idx3 = idx * 3;
+		Vec3d v = *m_tetMesh->getVertex(idx);
+		pos[idx3]   += v[0];
+		pos[idx3+1] += v[1];
+		pos[idx3+2] += v[2];
+	}
+
+
+	for (int i = 0; i < m_surfPntIdx.size(); ++i)
+	{
+		int idx = m_surfPntIdx[i];
+		int idx3 = idx * 3;
+		Vec3d v = *m_tetMesh->getVertex(idx);
+		pos[idx3]   += v[0];
+		pos[idx3+1] += v[1];
+		pos[idx3+2] += v[2];
+	}
+}
+
+bool RigFEM::RiggedMesh::updateExternalAndControlForce()
+{
+	EigVec pos, extForce;
+	getVertexPosition(pos);
+	bool res = m_rigObj->computeExternalForce(pos, m_v, m_mass, m_h, extForce);
+
+	if (!res || extForce.size() != m_nTotPnt * 3)
+	{
+		return false;
+	}
+
+	m_extForce = extForce;
+	if (m_controlType == CONTROL_EXPLICIT_FORCE)
+	{
+		if(!computeControlForce(m_controlForce, m_param, m_paramVelocity))
+		{
+			m_controlForce.setZero(m_nParam);
+		}
+		Global::showVector(m_controlForce, "ctrlForce");
+	}
+	if (m_controlType != CONTROL_NONE)
+	{
+		m_rigObj->getControlGain(m_propGain, m_deriGain);
+	}
+
+	return true;
+}
+
+bool RigFEM::RiggedMesh::computeControlForce( 
+	EigVec& generalForce, 
+	const EigVec& param, const EigVec& paramVelocity)
+{
+	EigVec pGain, dGain;
+	if(!m_rigObj->getControlGain(pGain, dGain))
+		return false;
+
+	int nParam = m_targetParam.size();
+	if (param.size() != nParam || 
+		paramVelocity.size() != nParam)
+		return false;
+
+	generalForce = pGain.cwiseProduct(m_targetParam - param);
+	generalForce += dGain.cwiseProduct(m_targetParamVelocity - paramVelocity);
+	return true;
+}
+
+bool RigFEM::RiggedMesh::computeControlForce( EigVec& generalForce, const EigVec& param )
+{
+	EigVec paramVel = (param - m_param) / m_h;
+	return computeControlForce(generalForce, param, paramVel);
+}
+
+void RigFEM::RiggedMesh::setRigControlType( RigControlType type )
+{
+	m_controlType = type;
+	m_controlForce.setZero(m_nTotPnt * 3);
+	m_targetParam.setZero(m_nTotPnt*3);
+	m_targetParamVelocity.setZero(m_nTotPnt*3);
+}
+
+void RigFEM::RiggedMesh::setControlTarget( const EigVec& targetParam, const EigVec& targetParamVelocity )
+{
+	m_targetParam = targetParam;
+	m_targetParamVelocity = targetParamVelocity;
+}
+
+const EigVec& RigFEM::RiggedMesh::getControlTargetParam() const
+{
+	return m_targetParam;
+}
+
+const EigVec& RigFEM::RiggedMesh::getControlTargetVelocity() const
+{
+	return m_targetParamVelocity;
+}
+
+bool RigFEM::RiggedMesh::getControlTargetFromRigNode( EigVec& target )
+{
+	return m_rigObj->getControlTarget(target);
+}
+
 
 void RigFEM::FEMSystem::init()
 {
 	m_mesh.init();
 	m_solver.setMesh(&m_mesh);
+}
+
+void RigFEM::MeshDispConfig::setDefault()
+{
+	m_extForceDispFactor = 0;
+	m_ctrlForceDispFactor= 0;
+}
+
+RigFEM::MeshDispConfig::MeshDispConfig()
+{
+	setDefault();
 }

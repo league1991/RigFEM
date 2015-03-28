@@ -15,7 +15,6 @@ void RigFEM::RigSimulator::freeSimObj()
 {
 	delete m_rigMesh;
 	delete m_solver;
-	delete m_recorder;
 	m_rigMesh = NULL;
 	m_solver = NULL;
 	m_recorder = NULL;
@@ -26,7 +25,7 @@ void RigFEM::RigSimulator::allocateSimObj()
 	freeSimObj();
 	m_rigMesh = new RiggedMesh();
 	m_solver  = new PointParamSolver(m_rigMesh);
-	m_recorder= new StatusRecorder();
+	m_recorder= &m_solver->getRecorder();
 }
 
 bool RigFEM::RigSimulator::testHessian( int curFrame )
@@ -35,13 +34,14 @@ bool RigFEM::RigSimulator::testHessian( int curFrame )
 		return false;
 
 	// 设置当前帧状态
+	m_solver->setCurrentFrame(curFrame);
 	RigStatus lastStatus, curStatus;
 	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
 	if (!res)
-		res = getInitStatus(lastStatus);
+		res = m_solver->getRestStatus(lastStatus);
 	res&= m_recorder->getStatus(curFrame, curStatus);
 	if (!res)
-		res = getInitStatus(curStatus);
+		res = m_solver->getRestStatus(curStatus);
 	if (!res)
 		return false;
 	double noiseN = 1.0, noiseP = 1.0;
@@ -55,13 +55,14 @@ bool RigFEM::RigSimulator::testGradient( int curFrame )
 		return false;
 
 	// 设置当前帧状态
+	m_solver->setCurrentFrame(curFrame);
 	RigStatus lastStatus, curStatus;
 	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
 	if (!res)
-		res = getInitStatus(lastStatus);
+		res = m_solver->getRestStatus(lastStatus);
 	res&= m_recorder->getStatus(curFrame, curStatus);
 	if (!res)
-		res = getInitStatus(curStatus);
+		res = m_solver->getRestStatus(curStatus);
 	if (!res)
 		return false;
 
@@ -83,10 +84,11 @@ bool RigFEM::RigSimulator::stepRig( int curFrame )
 		return false;
 
 	// 设置上一帧状态
+	m_solver->setCurrentFrame(curFrame);
 	RigStatus s;
 	bool res = m_recorder->getStatus(curFrame-1, s);
 	if (!res)
-		res = getInitStatus(s);
+		res = m_solver->getRestStatus(s);
 	if (res)
 	{
 		m_solver->setInitStatus(s);
@@ -107,28 +109,11 @@ bool RigFEM::RigSimulator::stepRig( int curFrame )
 	return m_recorder->setStatus(curFrame, s);
 }
 
-bool RigFEM::RigSimulator::getInitStatus( RigStatus& status )
-{
-	int paramLength = m_recorder->getParamVecLength();
-	int pntLength = m_recorder->getPointVecLength();
-
-	if (paramLength <= 0 || pntLength <= 0)
-		return false;
-
-	EigVec q,v,a;
-	q.setZero(pntLength);
-	v.setZero(pntLength);
-	a.setZero(pntLength);
-	status = RigStatus(q,v,a,m_initParam);
-	return true;
-}
 
 bool RigSimulator::init( tetgenio& surfMesh, RigSimulationNode* node, EigVec initParam, int curFrame /*= 0*/, double maxVolume /*= 1*/, double edgeRatio /*= 2 */, double youngModulus /*= 1e6*/, double nu /*= 0.45*/, double density /*= 1000*/, double timeStep /*= 1/24.0*/ , int maxStaticSolveIter)
 {
-	m_maxStaticSolveIter = maxStaticSolveIter;
 
 	int nValidParam = initParam.size();
-	m_initParam = initParam;
 	int nSurfVtx = surfMesh.numberofpoints;
 	GeneralRig* rig = new GeneralRig(node, nValidParam, nSurfVtx);
 	m_rig = rig;
@@ -136,6 +121,9 @@ bool RigSimulator::init( tetgenio& surfMesh, RigSimulationNode* node, EigVec ini
 
 	bool res = m_rigMesh->init(surfMesh, rig, maxVolume, edgeRatio, youngModulus, nu, density);
 	m_rigMesh->setStepTime(timeStep);
+
+	m_solver->setRestParam(initParam);
+	m_solver->setStaticSolveMaxIter(maxStaticSolveIter);
 
 	// 初始化结果记录器
 	int totPnt = m_rigMesh->getNTotPnt();
@@ -145,12 +133,17 @@ bool RigSimulator::init( tetgenio& surfMesh, RigSimulationNode* node, EigVec ini
 		curFrame, totPnt*3, nValidParam, 
 		m_rigMesh->getInternalPntIdx(), m_rigMesh->getSurfacePntIdx(),
 		pnts);
+
 	return res;
 }
 
 bool RigFEM::RigSimulator::setStaticSolveMaxIter( int maxIter )
 {
-	m_maxStaticSolveIter = maxIter;
+	if (!m_solver)
+	{
+		return false;
+	}
+	m_solver->setStaticSolveMaxIter(  maxIter );
 	return true;
 }
 
@@ -160,26 +153,10 @@ bool RigFEM::RigSimulator::staticStepRig( int curFrame, const EigVec& curParam )
 		return false;
 	if (curParam.size() != m_recorder->getParamVecLength())
 		return false;
+	m_solver->setCurrentFrame(curFrame);
+
 	// 获得上一帧状态
-	RigStatus s;
-	bool res = m_recorder->getStatus(curFrame-1, s);
-	if (!res)
-		res =getInitStatus(s);
-	if (!res)
-		return false;
-
-	// 求解平衡位置
-	EigVec p = curParam;
-	EigVec q;
-	const EigVec* initQ = &s.getQ();		// 以上一帧的位置开始迭代，加快速度
-	if(!m_rigMesh->computeStaticPos(p, 0, q, m_maxStaticSolveIter, initQ))
-		return false;
-
-	// 记录结果
-	double dt = m_rigMesh->getStepTime();
-	EigVec v = (q - s.getQ()) / dt;
-	EigVec a = (v - s.getV()) / dt;
-	return m_recorder->setStatus(curFrame, RigStatus(q,v,a,p));
+	return m_solver->staticSolve(curParam);
 }
 
 bool RigFEM::RigSimulator::setDeriStepSize( double step )
@@ -188,15 +165,15 @@ bool RigFEM::RigSimulator::setDeriStepSize( double step )
 	return true;
 }
 
-bool RigFEM::RigSimulator::showStatus( int curFrame, double* bbox /*= 0*/ )
+bool RigFEM::RigSimulator::showStatus( int curFrame, double* bbox)
 {
 	RigStatus status;
 	bool res = m_recorder->getStatus(curFrame, status);
 	if (!res)
-		res = getInitStatus(status);
+		res = m_solver->getRestStatus(status);
 	if (!res)
 		return false;
-	m_rigMesh->showStatus(status, bbox);
+	m_rigMesh->showStatus(status, m_dispConfig, bbox);
 	return true;
 }
 
@@ -205,7 +182,7 @@ bool RigFEM::RigSimulator::getParam( int curFrame, EigVec& curParam )
 	RigStatus status;
 	bool res = m_recorder->getStatus(curFrame, status);
 	if (!res)
-		res = getInitStatus(status);
+		res = m_solver->getRestStatus(status);
 	if (!res)
 		return false;
 	curParam = status.getP();
@@ -217,11 +194,21 @@ bool RigFEM::RigSimulator::isReady() const
 	return m_recorder != NULL && m_rig != NULL && m_rigMesh != NULL && m_solver != NULL;
 }
 
+bool RigFEM::RigSimulator::setControlType( RigControlType type )
+{
+	if (!m_solver)
+	{
+		return false;
+	}
+	m_solver->setControlType(type);
+	return true;
+}
+
 void RigFEM::RigSkinSimulator::allocateSimObj()
 {
 	RiggedSkinMesh* skinMesh = new RiggedSkinMesh();
 	m_solver  = new ParamSolver(skinMesh);
-	m_recorder= new StatusRecorder();
+	m_recorder= &m_solver->getRecorder();
 	m_rigMesh = skinMesh;
 }
 
@@ -231,13 +218,14 @@ bool RigFEM::RigSkinSimulator::testHessian( int curFrame )
 		return false;
 
 	// 设置当前帧状态
+	m_solver->setCurrentFrame(curFrame);
 	RigStatus lastStatus, curStatus;
 	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
 	if (!res)
-		res = getInitStatus(lastStatus);
+		res = m_solver->getRestStatus(lastStatus);
 	res&= m_recorder->getStatus(curFrame, curStatus);
 	if (!res)
-		res = getInitStatus(curStatus);
+		res = m_solver->getRestStatus(curStatus);
 	if (!res)
 		return false;
 	double noiseP = 1.0;
@@ -252,13 +240,14 @@ bool RigFEM::RigSkinSimulator::testGradient( int curFrame )
 		return false;
 
 	// 设置当前帧状态
+	m_solver->setCurrentFrame(curFrame);
 	RigStatus lastStatus, curStatus;
 	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
 	if (!res)
-		res = getInitStatus(lastStatus);
+		res = m_solver->getRestStatus(lastStatus);
 	res&= m_recorder->getStatus(curFrame, curStatus);
 	if (!res)
-		res = getInitStatus(curStatus);
+		res = m_solver->getRestStatus(curStatus);
 	if (!res)
 		return false;
 	double noiseP = 1.0;
@@ -283,4 +272,9 @@ bool RigFEM::RigSkinSimulator::init( tetgenio& surfMesh, RigSimulationNode* node
 	if (!res)
 		return false;
 	return true;
+}
+
+void RigFEM::SimulatorBase::setExternalForceDispFactor( double factor )
+{
+	m_dispConfig.m_extForceDispFactor = factor;
 }

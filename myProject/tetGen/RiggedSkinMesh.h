@@ -18,6 +18,9 @@ namespace RigFEM
 		// 计算给定状态x = p 以及时间参数param下的函数值，以及梯度
 		bool computeValueAndGrad(const EigVec& x, const EigVec& param, double* v = NULL, EigVec* grad = NULL);
 		bool computeHessian(const EigVec&x, const EigVec& param, EigDense& H);
+		// 计算近似的Hessian矩阵
+		// 假定雅可比矩阵为常数
+		bool computeApproxHessian(const EigVec&x, const EigVec& param, EigDense& H);
 
 		bool testCurFrameGrad(RigStatus& lastFrame, RigStatus& curFrame, double noiseP = 1.0);
 		bool testCurFrameHessian( RigStatus& lastFrame, RigStatus& curFrame, double noiseP=1.0);

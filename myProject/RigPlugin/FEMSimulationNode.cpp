@@ -27,7 +27,31 @@ const char* RigSimulationNode::m_dispTypeName[2] = {"displayType", "dispType"};
 const char* RigSimulationNode::m_dispFemMeshName[2] = {"displayFemMesh","dispFem"};
 const char* RigSimulationNode::m_cgMinStepSizeName[2] = {"inverseStepToleranceOfCG","invCGStepSize"};
 const char* RigSimulationNode::m_maxCGIterName[2]={"maxIterationOfCG","maxCGIter"};
+const char* RigSimulationNode::m_inputForceName[2]={"inputForce","ifc"};
+const char* RigSimulationNode::m_fieldDataName[2]={"fieldData", "fd"};
+const char* RigSimulationNode::m_fieldDataDeltaTimeName[2]={"fieldDataDeltaTime", "fdt"};
+const char* RigSimulationNode::m_fieldDataMassName[2] = {"fieldDataMass", "fdm"};
+const char* RigSimulationNode::m_fieldDataVelocityName[2] = {"fieldDataVelocity", "fdv"};
+const char* RigSimulationNode::m_fieldDataPositionName[2]={"fieldDataPosition", "fdp"};
+const char* RigSimulationNode::m_fieldForceFactorName[2]={"fieldForceShowLength","fieldForceLen"};
+const char* RigSimulationNode::m_derivativeGainRatioName[2] =  {"derivativeGainRatio", "dGainRatio"};
+const char* RigSimulationNode::m_proportionalGainName[2] = {"proportionalGain", "pGain"};
+const char* RigSimulationNode::m_targetParamName[2]= {"targetParam", "tarParam"};
+const char* RigSimulationNode::m_controlTypeName[2]= {"controlType", "ctrlType"};
+const char* RigSimulationNode::m_resultPathName[2]={"resultPath","resPath"};
 
+MObject RigSimulationNode::m_resultPath;
+MObject RigSimulationNode::m_derivativeGainRatio;
+MObject RigSimulationNode::m_proportionalGain;
+MObject RigSimulationNode::m_targetParam;
+MObject RigSimulationNode::m_controlType;
+MObject RigSimulationNode::m_fieldForceFactor;
+MObject RigSimulationNode::m_fieldDataPosition;	// 位置子属性
+MObject RigSimulationNode::m_fieldDataVelocity;	// 速度子属性
+MObject RigSimulationNode::m_fieldDataMass;		// 质量子属性
+MObject RigSimulationNode::m_fieldDataDeltaTime;	// 时间子属性
+MObject RigSimulationNode::m_fieldData;
+MObject RigSimulationNode::m_inputForce;
 MObject	RigSimulationNode::m_maxCGIter;
 MObject RigSimulationNode::m_dispFemMesh;
 MObject RigSimulationNode::m_cgMinStepSize;
@@ -74,10 +98,14 @@ void RigSimulationNode::postConstructor()
 
 void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::DisplayStyle style, M3dView:: DisplayStatus )
 {
+	
 	view.beginGL();
 	glPushAttrib(GL_CURRENT_BIT);
 
 	drawIcon();
+
+	//testField();
+	//printFieldData();
 
 	m_box = MBoundingBox(MPoint(-1.1,-0.5,-1.1), MPoint(4.1,0.5,1.1));
 	if (m_simulator)
@@ -103,6 +131,8 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 		bool isDrawFemMesh = (bool)dispFemMeshPlug.asShort();
 		if (isDrawFemMesh)
 		{
+			MPlug fieldForceFactorPlug = Global::getPlug(this, m_fieldForceFactorName[0]);
+			m_simulator->setExternalForceDispFactor(fieldForceFactorPlug.asDouble());
 			bool res = m_simulator->showStatus(curFrame, bbox);
 			if (res)
 			{
@@ -132,6 +162,8 @@ MStatus RigSimulationNode::initialize()
 	MFnMatrixAttribute  mAttr;
 	MFnTypedAttribute   tAttr;
 	MFnEnumAttribute	eAttr;
+	MFnUnitAttribute	uAttr;
+	MFnCompoundAttribute cAttr;
 
 	m_param = nAttr.create(m_paramName[0], m_paramName[1], MFnNumericData::kDouble,0, &s);
 	nAttr.setKeyable(false);
@@ -286,6 +318,7 @@ MStatus RigSimulationNode::initialize()
 	eAttr.setHidden(false);
 	eAttr.setReadable(true);
 	eAttr.setWritable(true);
+	eAttr.setStorable(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	m_dispType = eAttr.create(m_dispTypeName[0], m_dispTypeName[1]);
@@ -294,9 +327,19 @@ MStatus RigSimulationNode::initialize()
 	eAttr.setHidden(false);
 	eAttr.setReadable(true);
 	eAttr.setWritable(true);
+	eAttr.setStorable(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	m_weightPath = tAttr.create(m_weightPathName[0], m_weightPathName[1], MFnData::kString);
+	tAttr.setKeyable(true);
+	tAttr.setStorable(true);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setUsedAsFilename(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+
+	m_resultPath = tAttr.create(m_resultPathName[0], m_resultPathName[1], MFnData::kString);
 	tAttr.setKeyable(true);
 	tAttr.setStorable(true);
 	tAttr.setHidden(false);
@@ -345,6 +388,120 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setMax(1e7);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
+	m_inputForce = tAttr.create(m_inputForceName[0], m_inputForceName[1], MFnData::kVectorArray, &s);
+	tAttr.setKeyable(false);
+	tAttr.setStorable(false);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setReadable(true);
+	tAttr.setArray(true);
+	tAttr.setUsesArrayDataBuilder(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	// fieldData 属性，由多个子属性组成
+	m_fieldDataPosition = tAttr.create(m_fieldDataPositionName[0], m_fieldDataPositionName[1], MFnData::kVectorArray, &s);
+	tAttr.setKeyable(false);
+	tAttr.setStorable(false);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setReadable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_fieldDataVelocity = tAttr.create(m_fieldDataVelocityName[0], m_fieldDataVelocityName[1], MFnData::kVectorArray, &s);
+	tAttr.setKeyable(false);
+	tAttr.setStorable(false);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setReadable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_fieldDataMass = tAttr.create(m_fieldDataMassName[0], m_fieldDataMassName[1], MFnData::kDoubleArray, &s);
+	tAttr.setKeyable(false);
+	tAttr.setStorable(false);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setReadable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_fieldDataDeltaTime = uAttr.create(m_fieldDataDeltaTimeName[0], m_fieldDataDeltaTimeName[1], MFnUnitAttribute::kTime,1, &s);
+	uAttr.setKeyable(true);
+	uAttr.setStorable(false);
+	uAttr.setHidden(false);
+	uAttr.setWritable(true);
+	uAttr.setReadable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_fieldData = cAttr.create(m_fieldDataName[0], m_fieldDataName[1], &s);
+	cAttr.addChild(m_fieldDataPosition);
+	cAttr.addChild(m_fieldDataVelocity);
+	cAttr.addChild(m_fieldDataMass);
+	cAttr.addChild(m_fieldDataDeltaTime);	
+	cAttr.setKeyable(false);
+	cAttr.setStorable(false);
+	cAttr.setHidden(false);
+	cAttr.setWritable(true);
+	cAttr.setReadable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_fieldForceFactor = nAttr.create(m_fieldForceFactorName[0], m_fieldForceFactorName[1], MFnNumericData::kDouble,0.0, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0);
+	nAttr.setMax(1e10);
+	nAttr.setAffectsAppearance(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	// PD控制器属性
+	m_controlType = eAttr.create(m_controlTypeName[0], m_controlTypeName[1]);
+	eAttr.addField("None", CONTROL_NONE);
+	eAttr.addField("Implicit Force",   CONTROL_IMPLICIT_FORCE);
+	eAttr.addField("Explicit Force",   CONTROL_EXPLICIT_FORCE);
+	eAttr.setHidden(false);
+	eAttr.setReadable(true);
+	eAttr.setWritable(true);
+	eAttr.setStorable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_targetParam = nAttr.create(m_targetParamName[0], m_targetParamName[1], MFnNumericData::kDouble,0, &s);
+	nAttr.setKeyable(true);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setSoftMin(-10);
+	nAttr.setSoftMax(10);
+	nAttr.setArray(true); 
+	nAttr.setUsesArrayDataBuilder(true);
+	nAttr.setAffectsAppearance(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_proportionalGain = nAttr.create(m_proportionalGainName[0], m_proportionalGainName[1], MFnNumericData::kDouble,0, &s);
+	nAttr.setKeyable(true);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setSoftMin(-10);
+	nAttr.setSoftMax(10);
+	nAttr.setArray(true); 
+	nAttr.setUsesArrayDataBuilder(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_derivativeGainRatio = nAttr.create(m_derivativeGainRatioName[0], m_derivativeGainRatioName[1], MFnNumericData::kDouble,0, &s);
+	nAttr.setKeyable(true);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setSoftMin(-10);
+	nAttr.setSoftMax(10);
+	nAttr.setArray(true); 
+	nAttr.setUsesArrayDataBuilder(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
 	s = addAttribute(m_param);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_initParam);
@@ -377,6 +534,8 @@ MStatus RigSimulationNode::initialize()
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_weightPath);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_resultPath);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_maxParamStep);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_dispType);
@@ -387,8 +546,25 @@ MStatus RigSimulationNode::initialize()
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_cgMinStepSize);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_inputForce);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_fieldData);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_fieldForceFactor);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_controlType);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_targetParam);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_proportionalGain);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_derivativeGainRatio);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	s = attributeAffects(m_initParam, m_param);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = attributeAffects(m_targetParam, m_param);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = attributeAffects(m_dispType, m_param);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
@@ -525,6 +701,7 @@ bool RigSimulationNode::resetRig()
 	MPlug densityPlug = Global::getPlug(this, m_densityName[0]);
 	MPlug stepTimePlug = Global::getPlug(this, m_timeStepName[0]);
 	MPlug weightPathPlug = Global::getPlug(this, m_weightPathName[0]);
+	MPlug controlTypePlug= Global::getPlug(this, m_controlTypeName[0]);
 
 	tetgenio tetMesh;
 	MMatrix mat = getMatrix();
@@ -534,6 +711,14 @@ bool RigSimulationNode::resetRig()
 	EigVec initParam;
 	int curFrame = getCurFrame();
 	getInitParam(initParam);
+	
+	// 初始化控制参数
+	RigControlType ctrlType = (RigControlType)controlTypePlug.asShort();
+	if (ctrlType != CONTROL_NONE)
+	{
+		EigVec tarDummy, pGDummy, dGDummy;
+		getControlParams(tarDummy, pGDummy, dGDummy);
+	}
 	if (res)
 	{
 		switch(m_simTypeFlag)
@@ -726,6 +911,7 @@ bool RigSimulationNode::updateTerminationCond()
 		MPlug minStepPlug = Global::getPlug(this, m_minStepSizeName[0]);
 		MPlug cgMinStepPlug=Global::getPlug(this, m_cgMinStepSizeName[0]);
 		MPlug maxPStepPlug= Global::getPlug(this, m_maxParamStepName[0]);
+		MPlug ctrlTypePlug= Global::getPlug(this, m_controlTypeName[0]);
 
 		int maxIter = maxIterPlug.asInt();
 		int maxCGIter = maxCGIterPlug.asInt();
@@ -733,11 +919,14 @@ bool RigSimulationNode::updateTerminationCond()
 		double stepSize= 1.0 / minStepPlug.asDouble();
 		double cgStepSize = 1.0 / cgMinStepPlug.asDouble();
 		double maxPStep= maxPStepPlug.asDouble();
+		RigControlType controlType = (RigControlType)ctrlTypePlug.asShort();
+		sim->setControlType(controlType);
 		NewtonSolver* solver = sim->getSolver();
 		if (solver)
 		{
 			solver->setTerminateCond(maxIter, stepSize, gradSize, maxCGIter, cgStepSize);
 			solver->setIterationMaxStepSize(maxPStep);
+			solver->setControlType(controlType);
 		}
 	}
 	return true;
@@ -800,6 +989,217 @@ RigSimulationNode::DisplayType RigSimulationNode::getDispType()
 	MPlug dispPlug = Global::getPlug(this, m_dispTypeName[0]);
 	return (DisplayType)dispPlug.asShort();
 }
+
+MStatus RigSimulationNode::getInputForce( EigVec& force )
+{
+	RiggedMesh* mesh;
+	MStatus s;
+	if (!m_simulator || !(mesh = m_simulator->getRiggedMesh()))
+		return MStatus::kFailure;
+
+	int nDof = mesh->getNTotPnt() * 3;
+	force.setZero(nDof);
+	MPlug forceArrayPlug = Global::getPlug(this, m_inputForceName[0]);
+	for (int phyIdx = 0; phyIdx < forceArrayPlug.numElements(&s); ++phyIdx)
+	{
+		MPlug forcePlug = forceArrayPlug.elementByPhysicalIndex(phyIdx, &s);
+		if (!s)
+			continue;
+
+		if (!forcePlug.isConnected(&s) || !s)
+			continue;
+
+		MObject forceObj = forcePlug.asMObject();
+		MFnVectorArrayData forceData(forceObj, &s);
+		if (!s)
+			continue;
+
+		int vecLength = forceData.length();
+		if (vecLength * 3 != nDof)
+			continue;
+
+		for (int ithVec = 0, ithDof = 0; ithVec < vecLength; ++ithVec, ithDof += 3 )
+		{
+			MVector v = forceData[ithVec];
+			force[ithDof] += v.x;
+			force[ithDof+1] += v.y;
+			force[ithDof+2] += v.z;
+		}
+	}
+	return s;
+}
+
+void RigSimulationNode::printFieldData()
+{
+	MPlug inputForceArrayPlug = Global::getPlug(this, m_inputForceName[0]);
+	MPlug positionPlug   = Global::getPlug(this, m_fieldDataPositionName[0]);
+	MPlug velocityPlug   = Global::getPlug(this, m_fieldDataVelocityName[0]);
+	MPlug massPlug		 = Global::getPlug(this, m_fieldDataMassName[0]);
+	MPlug dTimePlug      = Global::getPlug(this, m_fieldDataDeltaTimeName[0]);
+
+	EigVec v;
+	PRINT_F("------------------------------------");
+
+	Global::getVectorArrayData(positionPlug, v);
+	Global::showVector(v, "position");
+
+	Global::getVectorArrayData(velocityPlug, v);
+	Global::showVector(v, "velocity");
+
+	Global::getDoubleArrayData(massPlug, v);
+	Global::showVector(v, "mass");
+
+	double dt = dTimePlug.asDouble();
+	PRINT_F("deltaTime = %lf", dt);
+
+	for (int i = 0; i < inputForceArrayPlug.numElements(); ++i)
+	{
+		MPlug inputForcePlug = inputForceArrayPlug.elementByPhysicalIndex(i);
+		Global::getVectorArrayData(inputForcePlug, v);
+		char name[20];
+		sprintf(name, "inForce[%d]", inputForcePlug.logicalIndex());
+		Global::showVector(v, name);
+	}
+}
+
+MStatus RigSimulationNode::testField()
+{
+	MStatus s;
+
+	int nPnt = 4;
+	int nDof = nPnt * 3;
+
+	MPlug posPlug = Global::getPlug(this, m_fieldDataPositionName[0]);
+	MPlug velPlug = Global::getPlug(this, m_fieldDataVelocityName[0]);
+	MPlug massPlug= Global::getPlug(this, m_fieldDataMassName[0]);
+	MPlug dTPlug  = Global::getPlug(this, m_fieldDataDeltaTimeName[0]);
+
+	EigVec v;
+	v.setRandom(nDof);
+	Global::setVectorArrayData(posPlug, v);
+	v.setRandom(nDof);
+	Global::setVectorArrayData(velPlug, v);
+	v.setRandom(nPnt);
+	Global::setDoubleArrayData(massPlug, v);
+	dTPlug.setDouble(1/24.0);
+
+	return s;
+}
+
+bool RigSimulationNode::computeExternalForce( const EigVec& pos, const EigVec& vel, const EigVec& m, double time, EigVec& extForce )
+{
+	MStatus s;
+	MPlug posPlug = Global::getPlug(this, m_fieldDataPositionName[0]);
+	MPlug velPlug = Global::getPlug(this, m_fieldDataVelocityName[0]);
+	MPlug massPlug= Global::getPlug(this, m_fieldDataMassName[0]);
+	MPlug dTPlug  = Global::getPlug(this, m_fieldDataDeltaTimeName[0]);
+
+	s = Global::setVectorArrayData(posPlug, pos);
+	CHECK_MSTATUS_AND_RETURN(s,false);
+	s = Global::setVectorArrayData(velPlug, vel);
+	CHECK_MSTATUS_AND_RETURN(s,false);
+	s = Global::setDoubleArrayData(massPlug, m);
+	CHECK_MSTATUS_AND_RETURN(s,false);
+	s = dTPlug.setDouble(time);
+	CHECK_MSTATUS_AND_RETURN(s,false);
+
+	s = getInputForce(extForce);
+	CHECK_MSTATUS_AND_RETURN(s,false);
+	return true;
+}
+
+bool RigSimulationNode::getControlParams( EigVec& targetParam, EigVec& propGain, EigVec& deriGain )
+{
+	int nParam = getNumParam();
+	if (nParam == 0)
+		return false;
+
+	targetParam.resize(nParam);
+	propGain.resize(nParam);
+	deriGain.resize(nParam);
+
+	MStatus s;
+	MPlug targetParamArrayPlug = Global::getPlug(this, m_targetParamName[0]);
+	MPlug propGainArrayPlug    = Global::getPlug(this, m_proportionalGainName[0]);
+	MPlug deriGainArrayPlug    = Global::getPlug(this, m_derivativeGainRatioName[0]);
+	MPlug stepTimePlug         = Global::getPlug(this, m_timeStepName[0]);
+
+	for (int ithParam = 0; ithParam < nParam; ++ithParam)
+	{
+		MPlug targetParamPlug = targetParamArrayPlug.elementByLogicalIndex(ithParam, &s);
+		CHECK_MSTATUS_AND_RETURN(s, false);
+		MPlug propGainPlug    = propGainArrayPlug.elementByLogicalIndex(ithParam, &s);
+		CHECK_MSTATUS_AND_RETURN(s, false);
+		MPlug deriGainPlug    = deriGainArrayPlug.elementByLogicalIndex(ithParam, &s);
+		CHECK_MSTATUS_AND_RETURN(s, false);
+
+		targetParamPlug.getValue(targetParam[ithParam]);
+		propGainPlug.getValue(propGain[ithParam]);
+		deriGainPlug.getValue(deriGain[ithParam]);
+	}
+
+	// 由于deriGain用的是比率形式，所以最后要相乘
+	// deriGain = propGain * deriGainRatio * dt
+	double dt = stepTimePlug.asDouble();
+	deriGain = propGain.cwiseProduct(deriGain) * dt;
+	return true;
+}
+
+bool RigSimulationNode::getControlTarget( EigVec& targetParam )
+{
+	int nParam = getNumParam();
+	if (nParam == 0)
+		return false;
+
+	targetParam.resize(nParam);
+
+	MStatus s;
+	MPlug targetParamArrayPlug = Global::getPlug(this, m_targetParamName[0]);
+
+	for (int ithParam = 0; ithParam < nParam; ++ithParam)
+	{
+		MPlug targetParamPlug = targetParamArrayPlug.elementByLogicalIndex(ithParam, &s);
+		CHECK_MSTATUS_AND_RETURN(s, false);
+
+		targetParamPlug.getValue(targetParam[ithParam]);
+	}
+	return true;
+}
+
+bool RigSimulationNode::getControlGain( EigVec& propGain, EigVec& deriGain )
+{
+	int nParam = getNumParam();
+	if (nParam == 0)
+		return false;
+
+	propGain.resize(nParam);
+	deriGain.resize(nParam);
+
+	MStatus s;
+	MPlug propGainArrayPlug    = Global::getPlug(this, m_proportionalGainName[0]);
+	MPlug deriGainArrayPlug    = Global::getPlug(this, m_derivativeGainRatioName[0]);
+	MPlug stepTimePlug         = Global::getPlug(this, m_timeStepName[0]);
+
+	for (int ithParam = 0; ithParam < nParam; ++ithParam)
+	{
+		MPlug propGainPlug    = propGainArrayPlug.elementByLogicalIndex(ithParam, &s);
+		CHECK_MSTATUS_AND_RETURN(s, false);
+		MPlug deriGainPlug    = deriGainArrayPlug.elementByLogicalIndex(ithParam, &s);
+		CHECK_MSTATUS_AND_RETURN(s, false);
+
+		propGainPlug.getValue(propGain[ithParam]);
+		deriGainPlug.getValue(deriGain[ithParam]);
+	}
+
+	// 由于deriGain用的是比率形式，所以最后要相乘
+	// deriGain = propGain * deriGainRatio * dt
+	double dt = stepTimePlug.asDouble();
+	deriGain = propGain.cwiseProduct(deriGain) * dt;
+	return true;
+}
+
+
+
 
 
 

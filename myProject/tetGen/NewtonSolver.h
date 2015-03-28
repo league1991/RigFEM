@@ -86,24 +86,52 @@ namespace RigFEM
 
 	class RiggedMesh;
 	class RiggedSkinMesh;
+	enum  RigControlType;
+
 	class NewtonSolver
 	{
 	public:
-		NewtonSolver();
+		NewtonSolver(RiggedMesh* fem);
 		virtual ~NewtonSolver(){}
 
+		// 设置不发生变形时的参数值
+		void setRestParam(EigVec& restParam);
 		// 终止条件
 		void setTerminateCond( int maxIter, double minStepSize, double minGradSize, int maxCGIter, double minCGStepSize);
 
 		bool setInitStatus(const RigStatus&s);
 		const RigStatus& getFinalStatus()const{return m_finalStatus;}
 		virtual bool step()=0;
+		virtual bool staticSolve(const EigVec& curParam){return false;}
 
 		void setIterationMaxStepSize(double maxStep);
+		
+		virtual void setControlType(RigControlType type){m_controlType = type;}
+
+		StatusRecorder& getRecorder(){return m_recorder;}
+
+		void setCurrentFrame(int curFrame){m_curFrame = curFrame;}
+		int  getCurrentFrame(){return m_curFrame;}
+
+		void setStaticSolveMaxIter(int maxIter);
+
+		bool getRestStatus( RigStatus& status );
 	protected:
+		// 获得当前帧的目标控制参数和目标控制参数的速度
+		bool getCurCtrlParam(EigVec& tarParam, EigVec& tarParamVelocity);
+
+		EigVec			m_restParam;
+
+		RiggedMesh*		m_femBase;
 
 		RigStatus	m_initStatus;		// 模拟初始状态
 		RigStatus	m_finalStatus;		// 模拟结束状态
+		StatusRecorder	m_recorder;		// 状态记录器
+
+		int			m_curFrame;			// 当前帧号
+
+		RigControlType m_controlType;	// 是否加入控制
+		static const char* s_targetParam; // 目标参数速度
 
 		// 以下是迭代的终止条件
 		int			m_maxIter;			// 最大迭代次数			
@@ -113,6 +141,8 @@ namespace RigFEM
 		double      m_minCGStepSize;	// 共轭梯度法中，梯度长度小于此值时迭代终止
 
 		double		m_iterMaxStepSize;	// 迭代过程中最大步长,每次参数各个分量的增量不得超过此值
+
+		int			m_maxStaticSolveIter;
 	};
 	class PointParamSolver:public NewtonSolver
 	{
@@ -123,12 +153,14 @@ namespace RigFEM
 		void setMesh(RiggedMesh* fem);
 		// 计算函数
 		bool step();
+		bool staticSolve(const EigVec& curParam);
 
 		void clearResult(){m_paramResult.clear();}
 		void saveResult(const char* fileName, const char* paramName = "param");
 
+		virtual void setControlType(RigControlType type);
 	private:
-		RiggedMesh*	m_fem;
+		RiggedMesh*		m_fem;
 		LineSearcher	m_lineSearch;
 
 		// 记录模拟出来的参数变化
@@ -138,15 +170,26 @@ namespace RigFEM
 	class ParamSolver:public NewtonSolver
 	{
 	public:
-		ParamSolver(RiggedSkinMesh* fem = NULL);
+		enum HessianType
+		{
+			HESSIAN_TRUE,
+			HESSIAN_CONST_JACOBIAN
+		};
+		ParamSolver(RiggedSkinMesh* fem = NULL, HessianType type = HESSIAN_CONST_JACOBIAN);
 
 		bool step();
+
+		virtual void setControlType(RigControlType type);
 	private:
 		RiggedSkinMesh*	m_fem;
 		LineSearcher	m_lineSearch;
 
+		// 额外传递的状态记录名
+		static const char*		s_dPName;					// 参数前后帧的值增量
+		static const char*		s_initStepName;				// 迭代初始步长
+
 		// 记录模拟出来的参数变化
 		vector<EigVec>			m_paramResult;				// 参数向量，包括关键帧驱动的参数，和模拟出来的参数
-
+		HessianType				m_hessianType;
 	};
 }

@@ -59,9 +59,11 @@ global proc execSimulator(string $nodeName, int $type)
 }
 global proc saveSimulationData(string $nodeName)
 {
-	string $filePath = `fileDialog -m 1`;
+	string $filePath = `getAttr ($nodeName+".resultPath")`;
+	//`fileDialog -m 1`;
 	int $res = `rigSimulate -name $nodeName -save $filePath`;
 }
+
 global proc initSimulatorControl(string $attrName)
 {
 	string $nodeName = `match "[^\.]*" $attrName`;	
@@ -96,6 +98,8 @@ global proc AErigSimulatorTemplate(string $nodeName)
 			editorTemplate -addControl "tetMaxVolume";
 			editorTemplate -addSeparator;
 			editorTemplate -addControl "displayFemMesh";
+			editorTemplate -label "Display Data Source" -addControl "displayType";
+			editorTemplate -label "Ext. Force Display Length" -addControl "fieldForceShowLength";
 			editorTemplate -addControl "meshTransform";
 		editorTemplate -endLayout;
 		
@@ -120,14 +124,25 @@ global proc AErigSimulatorTemplate(string $nodeName)
 			editorTemplate -addSeparator;
 			editorTemplate -addControl "savePath";
 			editorTemplate -addControl "simulationType";
-			editorTemplate -addControl "displayType";
 			editorTemplate -addControl "weightPath";
+			editorTemplate -addControl "resultPath";
 			editorTemplate -callCustom "initSimulatorControl" "modifySimulatorControl" "noAttr";	
 		editorTemplate -endLayout;
 		
 		editorTemplate -beginLayout "Rig Parameter" -collapse true;
 			editorTemplate -addControl "rigInitParameter";
+			editorTemplate -addControl "inputForce";
 		editorTemplate -endLayout;
+				
+		editorTemplate -beginLayout "Rig Control" -collapse true;
+			editorTemplate -addControl "controlType";
+			editorTemplate -addControl "targetParam";
+			editorTemplate -addControl "proportionalGain";
+			editorTemplate -addControl "derivativeGainRatio";
+		editorTemplate -endLayout;
+		
+		editorTemplate -suppress "fieldData";
+		editorTemplate -suppress "riggedMesh";
 		
 		editorTemplate -beginLayout (uiRes("m_AElocatorTemplate.kLocatorAttributes")) -collapse 0;
 			AElocatorCommon $nodeName;

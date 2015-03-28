@@ -69,7 +69,7 @@ bool RigFEM::RiggedSkinMesh::computeValueAndGrad( const EigVec& x, const EigVec&
 	// 计算函数值
 	if (v)
 	{
-		*v = computeValue(q);
+		*v = computeValue(q, x);
 	}
 	if (grad)
 	{
@@ -85,7 +85,7 @@ bool RigFEM::RiggedSkinMesh::computeValueAndGrad( const EigVec& x, const EigVec&
 		EigVec f(m_nTotPnt*3);
 		m_forceModel->GetInternalForce(&q[0], &f[0]);
 		f *= -1.0;
-		EigVec residual = ma - f;
+		EigVec residual = ma - f - m_extForce;		// 减去外力
 
 		EigVec gn(m_nIntPnt*3);
 		for (int ithN = 0; ithN < m_nIntPnt; ++ithN)
@@ -106,8 +106,18 @@ bool RigFEM::RiggedSkinMesh::computeValueAndGrad( const EigVec& x, const EigVec&
 		}
 
 		EigDense J;
-		res &= m_transRig->computeJacobian(J);
+		res &= m_rigObj->computeJacobian(J);
 		*grad = J.transpose() * (gs + m_weightMatTran * gn);
+
+		if (m_controlType == CONTROL_EXPLICIT_FORCE)
+		{
+			*grad -= m_controlForce;
+		}
+		else if (m_controlType == CONTROL_IMPLICIT_FORCE)
+		{
+			computeControlForce(m_controlForce, x);
+			*grad -= m_controlForce;
+		}
 	}
 	return res;
 }
@@ -153,7 +163,7 @@ bool RigFEM::RiggedSkinMesh::computeHessian( const EigVec&x, const EigVec& param
 
 	// 计算雅可比矩阵
 	EigDense J;
-	res &= m_transRig->computeJacobian(J);
+	res &= m_rigObj->computeJacobian(J);
 
 	// 计算Hessian第一项
 	// dJki/dp * bk
@@ -164,7 +174,7 @@ bool RigFEM::RiggedSkinMesh::computeHessian( const EigVec&x, const EigVec& param
 		for (int l = 0; l < m_nParam; ++l)
 		{
 			double& Hval = H(i,l);
-			res &= m_transRig->computeJacobianDerivative(i,l,&jacobianDeri[0]);
+			res &= m_rigObj->computeJacobianDerivative(i,l,&jacobianDeri[0]);
 			Hval = jacobianDeri.dot(b);
 		}
 	}
@@ -212,6 +222,13 @@ bool RigFEM::RiggedSkinMesh::computeHessian( const EigVec&x, const EigVec& param
 
 	// 计算Hessian第二项Jki * dbk/dp
 	H += term2;
+	if (m_controlType == CONTROL_IMPLICIT_FORCE)
+	{
+		for (int ithP = 0; ithP < m_nParam; ++ithP)
+		{
+			H(ithP, ithP) += m_propGain[ithP] + m_deriGain[ithP] / m_h;
+		}
+	}
 	return true;
 }
 
@@ -298,7 +315,9 @@ void RigFEM::RiggedSkinMesh::setDof( EigVec& p, bool proceedTime /*= true */ )
 
 	EigVec v = (q - m_q) / m_h;
 	EigVec a = (v - m_v) / m_h; 
+	EigVec pv= (p - m_param) / m_h;
 	m_param = p;
+	m_paramVelocity = pv;
 	m_v = v;
 	m_a = a;
 	m_q = q;
@@ -312,4 +331,77 @@ void RigFEM::RiggedSkinMesh::getDof( EigVec& p )
 {
 	p = m_param;
 }
+
+bool RigFEM::RiggedSkinMesh::computeApproxHessian( const EigVec&x, const EigVec& param, EigDense& H )
+{
+	// 计算当前各个自由度的值q
+	bool res = true;
+	EigVec q(m_nTotPnt*3);
+	res &= computeSkinQ(&x[0], param[0], &q[0]);
+
+	// 提取内力、tangent Stiffness matrix、质量矩阵
+	// 注意tangent stiffness matrix为实际的负值，因为系统计算出的弹力为实际的负值,因此需要先反转
+	EigVec force(m_nTotPnt*3);
+	if(!m_tangentStiffnessMatrix)
+		m_forceModel->GetTangentStiffnessMatrixTopology(&m_tangentStiffnessMatrix);
+	m_forceModel->GetForceAndMatrix(&q[0], &force[0], m_tangentStiffnessMatrix);
+	//*m_tangentStiffnessMatrix *= -1;
+	force *= -1;
+
+	// 计算雅可比矩阵
+	EigDense J;
+	res &= m_rigObj->computeJacobian(J);	
+
+	// 计算Hessian 第二项(第一项被省略)
+	// Jki * dbk/dp
+	// 提取 dFn/dn dFn/ds dFs/dn dFs/ds,
+	// 其中Fn为内部节点受到的力，Fs为表面节点受到的力
+	// n为内部节点位置，s为表面节点位置
+	EigSparse dFss, dFsn, dFns, dFnn;
+	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_surfDofIdx, dFss);
+	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_intDofIdx,  dFsn);
+	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_surfDofIdx, dFns);
+	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_intDofIdx,  dFnn);
+
+	// 计算 db/dp 
+	// 大小为(表面点数*3，参数数)
+	double h2 = m_h * m_h;
+	for (int i = 0; i < m_surfPntIdx.size(); ++i)
+	{
+		int idx = m_surfPntIdx[i];
+		double m = m_mass[idx] / h2;
+		int i3 = i*3;
+		dFss.coeffRef(i3,i3) += m;	++i3;
+		dFss.coeffRef(i3,i3) += m;	++i3;
+		dFss.coeffRef(i3,i3) += m;
+	}
+	for (int i = 0; i < m_intPntIdx.size(); ++i)
+	{
+		int idx = m_intPntIdx[i];
+		double m = m_mass[idx] / h2;
+		int i3 = i*3;
+		dFnn.coeffRef(i3,i3) += m;	++i3;
+		dFnn.coeffRef(i3,i3) += m;	++i3;
+		dFnn.coeffRef(i3,i3) += m;
+	}
+	EigDense JT     = J.transpose();
+	EigDense JTdFss = JT * dFss;
+	EigDense JTdFsn = JT * dFsn;
+	EigDense dFnsJ  = dFns * J;
+	EigDense JTWT   = JT * m_weightMatTran;
+	EigDense WJ     = m_weightMat * J;
+	EigDense term2  = JTdFss * J + JTWT * (dFnsJ +  dFnn * WJ) + JTdFsn * WJ;
+
+	// 计算Hessian第二项Jki * dbk/dp
+	H = term2;		
+	if (m_controlType == CONTROL_IMPLICIT_FORCE)
+	{
+		for (int ithP = 0; ithP < m_nParam; ++ithP)
+		{
+			H(ithP, ithP) += m_propGain[ithP] + m_deriGain[ithP] / m_h;
+		}
+	}
+	return true;
+}
+
 

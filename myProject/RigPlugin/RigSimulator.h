@@ -6,7 +6,7 @@ namespace RigFEM
 	class SimulatorBase
 	{
 	public:
-		SimulatorBase(){}
+		SimulatorBase(): m_rigMesh(NULL){}
 		virtual ~SimulatorBase(){}
 
 		virtual bool testGradient(int curFrame)=0;
@@ -19,12 +19,24 @@ namespace RigFEM
 		virtual bool setDeriStepSize(double step)=0;
 		virtual bool setStaticSolveMaxIter(int maxIter)=0;
 		virtual bool isReady()const=0;
+
+		RiggedMesh*		getRiggedMesh(){return m_rigMesh;}
+
+		// 一些显示状态
+		MeshDispConfig& getMeshConfig(){return m_dispConfig;}
+		void			setExternalForceDispFactor(double factor);
+	protected:
+		// 一些显示状态
+		MeshDispConfig	m_dispConfig;
+		
+		// rig网格
+		RiggedMesh*		m_rigMesh;
 	};
 	class GeneralRig;
 	class RigSimulator:public SimulatorBase
 	{
 	public:
-		RigSimulator():m_rigMesh(NULL), m_rig(NULL), m_solver(NULL), m_recorder(NULL){};
+		RigSimulator(): m_rig(NULL), m_solver(NULL), m_recorder(NULL){};
 		~RigSimulator(void);
 
 		bool			init(	tetgenio& surfMesh, RigSimulationNode* node, 
@@ -37,26 +49,25 @@ namespace RigFEM
 								int	   maxStaticSolveIter=20);
 
 		bool			isReady()const;
-		RiggedMesh*		getRiggedMesh(){return m_rigMesh;}
 		NewtonSolver*   getSolver(){return m_solver;}
+		bool			getParam(int curFrame, EigVec& curParam);
 		bool			testHessian(int curFrame);
 		bool			testGradient(int curFrame);
-		bool			saveResult(const char* fileName);
+
 		bool			stepRig(int curFrame);
 		bool			staticStepRig(int curFrame, const EigVec& curParam);
+
 		bool			setStaticSolveMaxIter(int maxIter);
 		bool			setDeriStepSize(double step);
-		bool			showStatus(int curFrame, double* bbox = 0);
-		bool			getParam(int curFrame, EigVec& curParam);
+		bool			showStatus( int curFrame, double* bbox = NULL);
+		bool			saveResult(const char* fileName);
+
+		bool			setControlType(RigControlType type);
 	protected:
-		bool			getInitStatus(RigStatus& status);
 		virtual void	allocateSimObj();
 		virtual void	freeSimObj();
 		
-		int				m_maxStaticSolveIter;
-		EigVec			m_initParam;
 		GeneralRig*		m_rig;
-		RiggedMesh*		m_rigMesh;
 		NewtonSolver*	m_solver;
 		StatusRecorder*	m_recorder;
 	};
