@@ -1390,9 +1390,9 @@ void RigFEM::RiggedMesh::getVertexPosition( EigVec& pos )
 
 bool RigFEM::RiggedMesh::updateExternalAndControlForce()
 {
-	EigVec pos, extForce;
+	EigVec pos, extForce, surfForce;
 	getVertexPosition(pos);
-	bool res = m_rigObj->computeExternalForce(pos, m_v, m_mass, m_h, extForce);
+	bool res = m_rigObj->computeExternalForce(pos, m_v, m_mass, m_h, extForce, surfForce);
 
 	if (!res || extForce.size() != m_nTotPnt * 3)
 	{
@@ -1400,6 +1400,11 @@ bool RigFEM::RiggedMesh::updateExternalAndControlForce()
 	}
 
 	m_extForce = extForce;
+	for (int i = 0; i < m_surfDofIdx.size(); ++i)
+	{
+		int idx = m_surfDofIdx[i];
+		m_extForce[idx] = surfForce[i];
+	}
 	if (m_controlType == CONTROL_EXPLICIT_FORCE)
 	{
 		if(!computeControlForce(m_controlForce, m_param, m_paramVelocity))

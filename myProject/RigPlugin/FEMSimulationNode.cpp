@@ -39,7 +39,19 @@ const char* RigSimulationNode::m_proportionalGainName[2] = {"proportionalGain", 
 const char* RigSimulationNode::m_targetParamName[2]= {"targetParam", "tarParam"};
 const char* RigSimulationNode::m_controlTypeName[2]= {"controlType", "ctrlType"};
 const char* RigSimulationNode::m_resultPathName[2]={"resultPath","resPath"};
+const char* RigSimulationNode::m_collisionParticleName[2]={"collisionParticle", "colPtcl"};
+const char* RigSimulationNode::m_collisionMeshName[2]={"collisionMesh", "colMesh"};
+const char* RigSimulationNode::m_surfaceForceName[2]={"surfaceForce","sfc"};
+const char* RigSimulationNode::m_surfaceForceFactorName[2]={"surfaceForceFactor", "sfcFtr"};
+const char* RigSimulationNode::m_surfaceForceBitmapName[2]={"surfaceForceBitmap", "sfcBmp"};
+const char* RigSimulationNode::m_timeName[2] = {"time", "t"};
 
+MObject RigSimulationNode::m_time;
+MObject RigSimulationNode::m_surfaceForce;
+MObject RigSimulationNode::m_surfaceForceFactor;
+MObject RigSimulationNode::m_surfaceForceBitmap;
+MObject RigSimulationNode::m_collisionMesh;
+MObject RigSimulationNode::m_collisionParticle;
 MObject RigSimulationNode::m_resultPath;
 MObject RigSimulationNode::m_derivativeGainRatio;
 MObject RigSimulationNode::m_proportionalGain;
@@ -90,6 +102,7 @@ void RigSimulationNode::postConstructor()
 {
 	MStatus s;
 	MFnDependencyNode nodeFn(thisMObject(), &s);
+
 	if (s)
 	{
 		nodeFn.setName( "rigSimulationShape#", &s);
@@ -111,6 +124,7 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 	if (m_simulator)
 	{
 		int curFrame = getCurFrame();
+		PRINT_F("currentFrame %d", curFrame);
 
 		MMatrix mat  = path.inclusiveMatrixInverse();
 		double  matBuf[4][4];
@@ -119,18 +133,11 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 		glPushMatrix();
 		glMultMatrixd(&matBuf[0][0]);
 
-		// 更新参数值
-		EigVec p;
-		if(m_simulator->getParam(curFrame, p) && getDispType() == DISP_SIM)
-			setParamPlug(&p[0], p.size());
-		else
-			setParamToInit();
-		double bbox[6];
-
 		MPlug dispFemMeshPlug = Global::getPlug(this, m_dispFemMeshName[0]);
 		bool isDrawFemMesh = (bool)dispFemMeshPlug.asShort();
 		if (isDrawFemMesh)
 		{
+			double bbox[6];
 			MPlug fieldForceFactorPlug = Global::getPlug(this, m_fieldForceFactorName[0]);
 			m_simulator->setExternalForceDispFactor(fieldForceFactorPlug.asDouble());
 			bool res = m_simulator->showStatus(curFrame, bbox);
@@ -173,6 +180,7 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setReadable(true);
 	nAttr.setSoftMin(0);
 	nAttr.setSoftMax(1);
+	nAttr.setAffectsAppearance(true);
 	nAttr.setArray(true); 
 	nAttr.setUsesArrayDataBuilder(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
@@ -347,6 +355,7 @@ MStatus RigSimulationNode::initialize()
 	tAttr.setUsedAsFilename(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
+
 	m_maxParamStep = nAttr.create(m_maxParamStepName[0], m_maxParamStepName[1], MFnNumericData::kDouble, 1, &s);
 	nAttr.setKeyable(false);
 	nAttr.setStorable(true);
@@ -396,6 +405,15 @@ MStatus RigSimulationNode::initialize()
 	tAttr.setReadable(true);
 	tAttr.setArray(true);
 	tAttr.setUsesArrayDataBuilder(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_time = uAttr.create(m_timeName[0], m_timeName[1], MFnUnitAttribute::kTime,1, &s);
+	uAttr.setKeyable(true);
+	uAttr.setStorable(false);
+	uAttr.setHidden(false);
+	uAttr.setWritable(true);
+	uAttr.setReadable(false);
+	uAttr.setAffectsAppearance(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	// fieldData 属性，由多个子属性组成
@@ -451,6 +469,8 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setReadable(true);
 	nAttr.setMin(0);
 	nAttr.setMax(1e10);
+	nAttr.setSoftMin(0);
+	nAttr.setSoftMax(0.1);
 	nAttr.setAffectsAppearance(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
@@ -478,7 +498,7 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setAffectsAppearance(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
-	m_proportionalGain = nAttr.create(m_proportionalGainName[0], m_proportionalGainName[1], MFnNumericData::kDouble,0, &s);
+	m_proportionalGain = nAttr.create(m_proportionalGainName[0], m_proportionalGainName[1], MFnNumericData::kDouble,500000, &s);
 	nAttr.setKeyable(true);
 	nAttr.setStorable(true);
 	nAttr.setHidden(false);
@@ -490,7 +510,7 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setUsesArrayDataBuilder(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
-	m_derivativeGainRatio = nAttr.create(m_derivativeGainRatioName[0], m_derivativeGainRatioName[1], MFnNumericData::kDouble,0, &s);
+	m_derivativeGainRatio = nAttr.create(m_derivativeGainRatioName[0], m_derivativeGainRatioName[1], MFnNumericData::kDouble,1, &s);
 	nAttr.setKeyable(true);
 	nAttr.setStorable(true);
 	nAttr.setHidden(false);
@@ -500,6 +520,55 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setSoftMax(10);
 	nAttr.setArray(true); 
 	nAttr.setUsesArrayDataBuilder(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	// 碰撞属性
+	m_surfaceForce = tAttr.create(m_surfaceForceName[0], m_surfaceForceName[1], MFnData::kVectorArray, &s);
+	tAttr.setKeyable(false);
+	tAttr.setStorable(false);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setReadable(true);
+	tAttr.setArray(true);
+	tAttr.setUsesArrayDataBuilder(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_surfaceForceBitmap = tAttr.create(m_surfaceForceBitmapName[0], m_surfaceForceBitmapName[1], MFnData::kDoubleArray, &s);
+	tAttr.setKeyable(false);
+	tAttr.setStorable(false);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setReadable(true);
+	tAttr.setArray(true);
+	tAttr.setUsesArrayDataBuilder(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_surfaceForceFactor = nAttr.create(m_surfaceForceFactorName[0], m_surfaceForceFactorName[1], MFnNumericData::kDouble,-1, &s);
+	nAttr.setKeyable(true);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setSoftMin(-1);
+	nAttr.setSoftMax(1);
+	nAttr.setArray(true); 
+	nAttr.setUsesArrayDataBuilder(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_collisionParticle = tAttr.create(m_collisionParticleName[0], m_collisionParticleName[1], MFnData::kString);
+	tAttr.setKeyable(false);
+	tAttr.setStorable(true);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setReadable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_collisionMesh = tAttr.create(m_collisionMeshName[0], m_collisionMeshName[1], MFnData::kString);
+	tAttr.setKeyable(false);
+	tAttr.setStorable(true);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setReadable(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	s = addAttribute(m_param);
@@ -560,7 +629,21 @@ MStatus RigSimulationNode::initialize()
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_derivativeGainRatio);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_surfaceForce);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_surfaceForceBitmap);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_surfaceForceFactor);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_collisionParticle);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_collisionMesh);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_time);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 
+	s = attributeAffects(m_time, m_param);					// 驱动节点求值
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = attributeAffects(m_initParam, m_param);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = attributeAffects(m_targetParam, m_param);
@@ -595,13 +678,27 @@ MStatus RigSimulationNode::setParamToInit()
 }
 MStatus RigSimulationNode::compute( const MPlug& plug, MDataBlock& data )
 {
+	int curFrame = getCurFrame();
 	MStatus s;
 	if (plug == m_param || plug.parent() == m_param)
 	{
+		// 获取依赖的输入参数，以保持DG的正常工作
+		MPlug timePlug = Global::getPlug(this, m_timeName[0]);
+		MPlug initPlug = Global::getPlug(this, m_initParamName[0]);
+		MPlug targetParamPlug = Global::getPlug(this, m_targetParamName[0]);
+		MPlug dispTypePlug    = Global::getPlug(this, m_dispTypeName[0]);
+
+		EigVec p;
+		getInitParam(p);
+		getControlTarget(p);
+		MTime time = timePlug.asMTime();
+
 		// 设置当前状态的参数值
 		int curFrame = getCurFrame();
-		EigVec p;
-		if(m_simulator && m_simulator->isReady() && m_simulator->getParam(curFrame, p))
+		if( m_simulator && 
+			m_simulator->isReady() && 
+			m_simulator->getParam(curFrame, p) && 
+			getDispType() == DISP_SIM)
 		{
 			Global::showVector(p, "P");
 			setParamPlug(&p[0], p.size());
@@ -791,7 +888,7 @@ bool RigSimulationNode::testHessian(double noiseN, double noiseP)
 
 	// 设置当前帧状态
 	int curFrame = getCurFrame();
-	return m_simulator->testHessian(curFrame);
+	return m_simulator->testHessian(curFrame, noiseN, noiseP);
 }
 bool RigSimulationNode::updateDeriStepSize()
 {
@@ -824,7 +921,6 @@ int RigSimulationNode::getCurFrame()
 	int curFrame = 1;
 	MGlobal::executeCommand("currentTime -q", curFrame);
 	return curFrame;
-// 	return 1;
 // 	MTime t = MAnimControl::currentTime();
 // 	return t.value();
 }
@@ -940,7 +1036,7 @@ bool RigSimulationNode::testGrad( double noiseN, double noiseP )
 
 	// 设置当前帧状态
 	int curFrame = getCurFrame();
-	return m_simulator->testGradient(curFrame);
+	return m_simulator->testGradient(curFrame, noiseN, noiseP);
 }
 
 bool RigSimulationNode::saveSimulationData( const char* fileName )
@@ -990,19 +1086,20 @@ RigSimulationNode::DisplayType RigSimulationNode::getDispType()
 	return (DisplayType)dispPlug.asShort();
 }
 
-MStatus RigSimulationNode::getInputForce( EigVec& force )
+MStatus RigSimulationNode::getInputForce( EigVec& fieldForce, EigVec& surfForce )
 {
 	RiggedMesh* mesh;
 	MStatus s;
 	if (!m_simulator || !(mesh = m_simulator->getRiggedMesh()))
 		return MStatus::kFailure;
 
+	// 获得场的力
 	int nDof = mesh->getNTotPnt() * 3;
-	force.setZero(nDof);
-	MPlug forceArrayPlug = Global::getPlug(this, m_inputForceName[0]);
-	for (int phyIdx = 0; phyIdx < forceArrayPlug.numElements(&s); ++phyIdx)
+	fieldForce.setZero(nDof);
+	MPlug fieldForceArrayPlug = Global::getPlug(this, m_inputForceName[0]);
+	for (int phyIdx = 0; phyIdx < fieldForceArrayPlug.numElements(&s); ++phyIdx)
 	{
-		MPlug forcePlug = forceArrayPlug.elementByPhysicalIndex(phyIdx, &s);
+		MPlug forcePlug = fieldForceArrayPlug.elementByPhysicalIndex(phyIdx, &s);
 		if (!s)
 			continue;
 
@@ -1021,11 +1118,69 @@ MStatus RigSimulationNode::getInputForce( EigVec& force )
 		for (int ithVec = 0, ithDof = 0; ithVec < vecLength; ++ithVec, ithDof += 3 )
 		{
 			MVector v = forceData[ithVec];
-			force[ithDof] += v.x;
-			force[ithDof+1] += v.y;
-			force[ithDof+2] += v.z;
+			fieldForce[ithDof] += v.x;
+			fieldForce[ithDof+1] += v.y;
+			fieldForce[ithDof+2] += v.z;
 		}
 	}
+
+	// 获得表面力
+	nDof = mesh->getNSurfPnt() * 3;
+	surfForce.setZero(nDof);
+	MPlug surfForceArrayPlug       = Global::getPlug(this, m_surfaceForceName[0]);
+	MPlug surfForceBitmapArrayPlug = Global::getPlug(this, m_surfaceForceBitmapName[0]);
+	MPlug surfForceFactorArrayPlug = Global::getPlug(this, m_surfaceForceFactorName[0]);
+	for (int phyIdx = 0; phyIdx < surfForceArrayPlug.numElements(&s); ++phyIdx)
+	{
+		// 获得外力数据
+		MPlug forcePlug = surfForceArrayPlug.elementByPhysicalIndex(phyIdx, &s);
+		if (!s)
+			continue;
+		if (!forcePlug.isConnected(&s) || !s)
+			continue;
+		int   logIdx    = forcePlug.logicalIndex();
+		MObject forceObj = forcePlug.asMObject();
+		MFnVectorArrayData forceData(forceObj, &s);
+		if (!s)	continue;
+		int vecLength = forceData.length();
+		if (vecLength * 3 != nDof)
+			continue;
+
+		// 获得外力因子和位图数据
+		MPlug forceBitmapPlug = surfForceBitmapArrayPlug.elementByLogicalIndex(logIdx, &s);
+		if(!s)continue;
+		MPlug forceFactorPlug = surfForceFactorArrayPlug.elementByLogicalIndex(logIdx, &s);
+		if(!s)continue;
+
+		double factor  = forceFactorPlug.asDouble();
+		bool hasBitmap = forceBitmapPlug.isConnected(&s);
+		MFnDoubleArrayData* bitmapData = NULL;
+		MObject bitmapObj;
+		if (hasBitmap)
+		{
+			bitmapObj = forceBitmapPlug.asMObject();
+			bitmapData = new MFnDoubleArrayData(bitmapObj, &s);
+		}
+		if(!s)
+		{
+			delete bitmapData;continue;
+		}
+
+		// 计算外力
+		for (int ithVec = 0, ithDof = 0; ithVec < vecLength; ++ithVec, ithDof += 3 )
+		{
+			MVector v = forceData[ithVec];
+			double f = factor;
+			if (hasBitmap && (*bitmapData)[ithVec] == -1)
+				f = 0;
+
+			surfForce[ithDof]   += v.x * f;
+			surfForce[ithDof+1] += v.y * f;
+			surfForce[ithDof+2] += v.z * f;
+		}
+		delete bitmapData;
+	}
+
 	return s;
 }
 
@@ -1086,7 +1241,7 @@ MStatus RigSimulationNode::testField()
 	return s;
 }
 
-bool RigSimulationNode::computeExternalForce( const EigVec& pos, const EigVec& vel, const EigVec& m, double time, EigVec& extForce )
+bool RigSimulationNode::computeExternalForce( const EigVec& pos, const EigVec& vel, const EigVec& m, double time, EigVec& extForce , EigVec& surfForce)
 {
 	MStatus s;
 	MPlug posPlug = Global::getPlug(this, m_fieldDataPositionName[0]);
@@ -1103,7 +1258,7 @@ bool RigSimulationNode::computeExternalForce( const EigVec& pos, const EigVec& v
 	s = dTPlug.setDouble(time);
 	CHECK_MSTATUS_AND_RETURN(s,false);
 
-	s = getInputForce(extForce);
+	s = getInputForce(extForce, surfForce);
 	CHECK_MSTATUS_AND_RETURN(s,false);
 	return true;
 }
@@ -1197,6 +1352,26 @@ bool RigSimulationNode::getControlGain( EigVec& propGain, EigVec& deriGain )
 	deriGain = propGain.cwiseProduct(deriGain) * dt;
 	return true;
 }
+
+int RigSimulationNode::getNumInternalPnt()
+{
+	if (!m_simulator || !m_simulator->getRiggedMesh())
+	{
+		return 0;
+	}
+	return m_simulator->getRiggedMesh()->getNIntPnt();
+}
+
+int RigSimulationNode::getNumSurfacePnt()
+{
+	if (!m_simulator || !m_simulator->getRiggedMesh())
+	{
+		return 0;
+	}
+	return m_simulator->getRiggedMesh()->getNSurfPnt();
+}
+
+
 
 
 

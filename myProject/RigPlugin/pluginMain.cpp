@@ -37,6 +37,12 @@ MStatus initializePlugin( MObject obj )
 		DataSwitchNode::initialize);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
+
+	status = plugin.registerNode(	Simple1DNoiseNode::m_nodeName, Simple1DNoiseNode::m_id, 
+		Simple1DNoiseNode::creator,	
+		Simple1DNoiseNode::initialize);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+
 	MGlobal::displayInfo("Simulation plugin is loaded successfully!");
 	return status;
 }
@@ -66,6 +72,9 @@ MStatus uninitializePlugin( MObject obj)
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	status = plugin.deregisterNode(DataSwitchNode::m_id);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+
+	status = plugin.deregisterNode(Simple1DNoiseNode::m_id);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	MGlobal::displayInfo("Simulation plugin is unloaded successfully!");

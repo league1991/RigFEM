@@ -131,6 +131,7 @@ typedef Eigen::VectorXd				EigVec;
 #include "nanoflann.hpp"
 
 #include "globals.h"
+#include "Simple1DNoiseNode.h"
 #include "GeneralRig.h"
 #include "FEMSimulationNode.h"
 #include "ExecSimulationCmd.h"

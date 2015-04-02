@@ -32,9 +32,7 @@ namespace RigFEM
 		// 计算函数
 		virtual bool computeValue(double* result, const double* params = 0);
 		// 计算外力,给定每个顶点的位置、速度、质量，以及时间步长
-		bool computeExternalForce(const EigVec& pos, const EigVec& vel, const EigVec& m, 
-			double time, EigVec& extForce);
-
+		bool computeExternalForce( const EigVec& pos, const EigVec& vel, const EigVec& m, double time, EigVec& extForce, EigVec& surfForce );
 		bool getControlParams(EigVec& targetParam, EigVec& propGain, EigVec& deriGain);
 		bool getControlGain(EigVec& propGain, EigVec& deriGain);
 		bool getControlTarget(EigVec& targetParam);

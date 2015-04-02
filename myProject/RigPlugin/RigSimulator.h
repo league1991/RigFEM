@@ -9,8 +9,8 @@ namespace RigFEM
 		SimulatorBase(): m_rigMesh(NULL){}
 		virtual ~SimulatorBase(){}
 
-		virtual bool testGradient(int curFrame)=0;
-		virtual bool testHessian(int curFrame)=0;
+		virtual bool testGradient(int curFrame, double noiseN, double noiseP )=0;
+		virtual bool testHessian(int curFrame, double noiseN, double noiseP )=0;
 		virtual bool saveResult(const char* fileName)=0;
 		virtual bool stepRig(int curFrame)=0;
 		virtual bool staticStepRig(int curFrame, const EigVec& curParam)=0;
@@ -51,8 +51,8 @@ namespace RigFEM
 		bool			isReady()const;
 		NewtonSolver*   getSolver(){return m_solver;}
 		bool			getParam(int curFrame, EigVec& curParam);
-		bool			testHessian(int curFrame);
-		bool			testGradient(int curFrame);
+		bool			testHessian(int curFrame, double noiseN, double noiseP );
+		bool			testGradient(int curFrame, double noiseN, double noiseP );
 
 		bool			stepRig(int curFrame);
 		bool			staticStepRig(int curFrame, const EigVec& curParam);

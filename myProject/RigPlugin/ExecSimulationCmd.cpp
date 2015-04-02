@@ -8,6 +8,10 @@ const char* RigSimulateCmd::m_nameFlag[2] = {"-name", "-n"};
 const char* RigSimulateCmd::m_hessianFlag[2] = {"-hessian", "-h"};
 const char* RigSimulateCmd::m_gradFlag[2] = {"-gradient", "-g"};
 const char* RigSimulateCmd::m_saveFlag[2] = {"-save", "-sa"};
+const char* RigSimulateCmd::m_surfPntFlag[2] = {"-numSurfacePnt",	"-nsp"};
+const char* RigSimulateCmd::m_intPntFlag[2] = {"-numInternalPnt",   "-nip"};
+const char* RigSimulateCmd::m_createFlag[2] = {"-create", "-c"};
+
 
 RigSimulateCmd::RigSimulateCmd(void)
 {
@@ -41,6 +45,20 @@ MStatus RigSimulateCmd::doIt( const MArgList& args )
 	bool isGradFlagSet = argData.isFlagSet(m_gradFlag[1], &s);
 	bool isSaveFlagSet = argData.isFlagSet(m_saveFlag[1], &s);
 	bool isStepStaticSet = argData.isFlagSet(m_stepStaticFlag[1], &s);
+	bool isIntPFlagSet = argData.isFlagSet(m_intPntFlag[1], &s);
+	bool isSurfPFlagSet= argData.isFlagSet(m_surfPntFlag[1], &s);
+	bool isCreateFlagSet=  argData.isFlagSet(m_createFlag[1], &s);
+
+	if (isCreateFlagSet)
+	{
+		const char* createCmd = 
+			"{													\
+			string $nodeName = `createNode rigSimulator`;		\
+			connectAttr time1.outTime ($nodeName + \".time\");	\
+			}";
+		PRINT_F("command: %s", createCmd);
+		MGlobal::executeCommand(createCmd);
+	}
 
 	MItSelectionList pSel(selection, MFn::kDependencyNode , &s);
 	MObject obj;
@@ -92,6 +110,18 @@ MStatus RigSimulateCmd::doIt( const MArgList& args )
 				argData.getFlagArgument(m_saveFlag[1], 0, filePath);
 				res &= node->saveSimulationData(filePath.asChar());
 			}
+			else if (isIntPFlagSet)
+			{
+				int nPnt = node->getNumInternalPnt();
+				setResult(nPnt);
+				return MS::kSuccess;
+			}
+			else if (isSurfPFlagSet)
+			{
+				int nPnt = node->getNumSurfacePnt();
+				setResult(nPnt);
+				return MS::kSuccess;
+			}
 
 			if (res)
 			{
@@ -121,6 +151,9 @@ MSyntax RigSimulateCmd::newSyntax()
 	MStatus s;
 	s = syntax.addFlag(m_initFlag[1], m_initFlag[0], MSyntax::kNoArg);
 	s = syntax.addFlag(m_stepFlag[1], m_stepFlag[0], MSyntax::kNoArg);
+	s = syntax.addFlag(m_intPntFlag[1], m_intPntFlag[0], MSyntax::kNoArg);
+	s = syntax.addFlag(m_surfPntFlag[1], m_surfPntFlag[0], MSyntax::kNoArg);
+	s = syntax.addFlag(m_createFlag[1], m_createFlag[0], MSyntax::kNoArg);
 	s = syntax.addFlag(m_stepStaticFlag[1], m_stepStaticFlag[0], MSyntax::kNoArg);
 	s = syntax.addFlag(m_nameFlag[1], m_nameFlag[0], MSyntax::kString);
 	s = syntax.addFlag(m_hessianFlag[1], m_hessianFlag[0], MSyntax::kDouble, MSyntax::kDouble);
@@ -128,4 +161,5 @@ MSyntax RigSimulateCmd::newSyntax()
 	s = syntax.addFlag(m_saveFlag[1], m_saveFlag[0], MSyntax::kString);
 	return syntax;
 }
+
 

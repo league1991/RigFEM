@@ -44,7 +44,7 @@ namespace RigFEM
 
 		// º∆À„Õ‚¡¶
 		virtual bool computeExternalForce(const EigVec& pos, const EigVec& vel, const EigVec& m, 
-			double time, EigVec& extForce){return false;}
+			double time, EigVec& extForce, EigVec& surfForce){return false;}
 		
 		virtual bool getControlGain(EigVec& propGain, EigVec& deriGain){return false;}
 		virtual bool getControlParams(EigVec& targetParam, EigVec& propGain, EigVec& deriGain){return false;}

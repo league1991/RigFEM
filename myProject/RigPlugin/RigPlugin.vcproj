@@ -25,6 +25,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
+				CommandLine="copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -92,7 +93,7 @@
 			<Tool
 				Name="VCPostBuildEventTool"
 				Description="复制文件"
-				CommandLine="copy ..\Debug\RigPlugin.mll  ..\DLL\RigPlugin.mll&#x0D;&#x0A;copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;&#x0D;&#x0A;"
+				CommandLine="copy ..\Debug\RigPlugin.mll  ..\DLL\RigPlugin.mll&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration
@@ -105,6 +106,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
+				CommandLine="copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -174,7 +176,7 @@
 			<Tool
 				Name="VCPostBuildEventTool"
 				Description="复制文件"
-				CommandLine="copy ..\Release\RigPlugin.mll  ..\DLL\RigPlugin.mll&#x0D;&#x0A;copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;&#x0D;&#x0A;"
+				CommandLine="copy ..\Release\RigPlugin.mll  ..\DLL\RigPlugin.mll&#x0D;&#x0A;"
 			/>
 		</Configuration>
 	</Configurations>
@@ -318,6 +320,14 @@
 			</File>
 			<File
 				RelativePath=".\RigPlugin.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\Simple1DNoiseNode.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\Simple1DNoiseNode.h"
 				>
 			</File>
 		</Filter>

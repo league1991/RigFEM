@@ -8,10 +8,92 @@
 //  Output Value:
 //	None
 // 
+global proc string getFirstShape(string $transformName)
+{
+	string $shapes[]    = `listRelatives -shapes $transformName`;
+	return $shapes[0];
+}
+
+global proc buildOrUpdateCollisionData(string $nodeName)
+{	
+	string $ptcl      = `getAttr ($nodeName + ".collisionParticle")`;
+	string $mesh      = `getAttr ($nodeName + ".collisionMesh")`;
+	if(`size $ptcl` == 0 || `size $mesh` == 0)
+	{
+		confirmDialog -title "Error" -message "Please enter particle and mesh name." -button "OK";
+		return;
+	}
+	// if object not exist, create one
+	if(`objExists $ptcl` == 0)
+	{	
+		nParticle -name $ptcl;
+	}
+	
+	// add attribute 
+	string $ptclShape = getFirstShape($ptcl);
+	if(`attributeExists collisionWorldForce $ptclShape` == 0)
+	{
+		addAttr -ln collisionWorldForce -dt vectorArray $ptclShape;
+	}	
+	if(`attributeExists collisionWorldForce0 $ptclShape` == 0)
+	{
+		addAttr -ln collisionWorldForce0 -dt vectorArray $ptclShape;
+	}	
+	if(`attributeExists collisionGeometryIndex $ptclShape` == 0)
+	{
+		addAttr -ln collisionGeometryIndex -dt doubleArray $ptclShape;
+	}
+	if(`attributeExists collisionGeometryIndex0 $ptclShape` == 0)
+	{
+		addAttr -ln collisionGeometryIndex0 -dt doubleArray $ptclShape;
+	}
+	
+	// connect attribute
+	if(`isConnected ($ptclShape+".collisionGeometryIndex") ($nodeName + ".surfaceForceBitmap[0]")` == 0)
+	{
+		connectAttr -f ($ptclShape+".collisionGeometryIndex") ($nodeName + ".surfaceForceBitmap[0]");
+	}
+	if(`isConnected ($ptclShape+".collisionWorldForce") ($nodeName + ".surfaceForce[0]")` == 0)
+	{
+		connectAttr -f ($ptclShape+".collisionWorldForce") ($nodeName + ".surfaceForce[0]");
+	}
+	
+	// add goal
+	goal -w 1 -utr 0 -g $mesh  $ptcl;
+}
+
 global proc initSimulator(string $nodeName)
 {	
 	// execute
 	rigSimulate -init -name $nodeName;
+	
+	// reset particle shape
+	string $ptcl      = `getAttr ($nodeName + ".collisionParticle")`;
+	string $ptclShape = getFirstShape($ptcl);
+	string $mesh      = `getAttr ($nodeName + ".collisionMesh")`;
+	int    $nPnt      = `rigSimulate -numSurfacePnt -name $nodeName`;
+	float $pnt[3] = {0,0,0};
+	if(`size($ptclShape)` != 0 && `objExists $ptclShape`)
+	{
+		clearParticleStartState $ptclShape; 
+		currentTime 1;
+		
+		// add particles
+		int $frame = `currentTime -q`;
+		int $i;
+		for($i = 0; $i < $nPnt; ++$i)
+		{        
+			if ( `size($mesh)` != 0)
+			{			
+				$pnt = `xform -q -worldSpace -t ($mesh + ".vtx[" + $i + "]")`;
+			}
+			emit -object $ptclShape -pos $pnt[0] $pnt[1] $pnt[2];
+		}
+		
+		// go back to current frame and set it as initial state
+		currentTime $frame;
+		saveInitialState $ptclShape;
+	}
 }
 // type: simulation type 
 // 0		dynamic simulation
@@ -39,7 +121,6 @@ global proc execSimulator(string $nodeName, int $type)
 		print("\n\ncurrent Frame:"+ $t + "\n");
         progressBar -edit -step 1 $gMainProgressBar;
 			
-		currentTime $t;
 		int $res;
 		switch($type)
 		{
@@ -52,6 +133,8 @@ global proc execSimulator(string $nodeName, int $type)
 		}
 		if($res == 0)
 			break;
+				
+		currentTime ($t+1);
 	}
 	
 	// delete progress bar
@@ -64,9 +147,10 @@ global proc saveSimulationData(string $nodeName)
 	int $res = `rigSimulate -name $nodeName -save $filePath`;
 }
 
+// simulation buttons
 global proc initSimulatorControl(string $attrName)
 {
-	string $nodeName = `match "[^\.]*" $attrName`;	
+	string $nodeName = `plugNode $attrName`;
 	setUITemplate -pst "attributeEditorTemplate";
 		button -label "Initialize" -c ("initSimulator " + $nodeName) initButton;
 		
@@ -83,33 +167,88 @@ global proc initSimulatorControl(string $attrName)
 
 global proc modifySimulatorControl(string $attrName)
 {
-	string $nodeName = `match "[^\.]*" $attrName`;	
+	string $nodeName = `plugNode $attrName`;
 	button -e -c ("initSimulator " + $nodeName) initButton;	
 	button -e -c ("execSimulator " + $nodeName + " 0") simButton;
 	button -e -c ("execSimulator " + $nodeName + " 1") staticSimButton;
 	button -e -c ("saveSimulationData " + $nodeName) saveButton;
 }
+// collision buttons
+global proc initCollisionControl(string $attrName)
+{
+	string $nodeName = `plugNode $attrName`;	
+	setUITemplate -pst "attributeEditorTemplate";		
+		button -label "Build or Update Collision Data" -c ("buildOrUpdateCollisionData " + $nodeName) collisionButton;
+	setUITemplate -ppt;
+}
+global proc modifyCollisionControl(string $attrName)
+{
+	string $nodeName = `plugNode $attrName`;
+	button -e -c ("buildOrUpdateCollisionData " + $nodeName) collisionButton;
+}
 
+// test gradient and hessian
+global proc testGradient(string $nodeName)
+{	
+	float $dN = `floatSliderGrp -query -value dNSlider`;
+	float $dP = `floatSliderGrp -query -value dPSlider`;
+	rigSimulate -gradient $dN $dP -name $nodeName;
+}
+global proc testHessian(string $nodeName)
+{	
+	float $dN = `floatSliderGrp -query -value dNSlider`;
+	float $dP = `floatSliderGrp -query -value dPSlider`;
+	rigSimulate -hessian $dN $dP -name $nodeName;
+}
+
+global proc initTestGH(string $attrName)
+{
+	string $nodeName = `plugNode $attrName`;	
+	setUITemplate -pst "attributeEditorTemplate";		
+		floatSliderGrp 	-label "Internal Point Increment" -field true
+					    -minValue 0.0 -maxValue 1
+					    -fieldMinValue 0 -fieldMaxValue 1.7e308
+					    -value 1  dNSlider;
+								
+		floatSliderGrp 	-label "Parameter Increment" -field true
+					    -minValue 0.0 -maxValue 1
+					    -fieldMinValue 0 -fieldMaxValue 1.7e308
+					    -value 1  dPSlider;
+						
+		button -label "Test Gradient" -c ("testGradient " + $nodeName) testGradientButton;
+		button -label "Test Hessian"  -c ("testGradient " + $nodeName) testHessianButton;		
+	setUITemplate -ppt;
+}
+
+global proc modifyTestGH(string $attrName)
+{
+	string $nodeName = `plugNode $attrName`;	
+	button -e -c ("testGradient " + $nodeName) testGradientButton;
+	button -e -c ("testHessian "  + $nodeName) testHessianButton;
+}
+
+// main
 global proc AErigSimulatorTemplate(string $nodeName)
 {
 	editorTemplate -beginScrollLayout;
-		editorTemplate -beginLayout "Tet Mesh Parameters" -collapse false;
+		editorTemplate -beginLayout "Tet Mesh" -collapse false;
 			editorTemplate -addControl "tetEdgeRatio";
 			editorTemplate -addControl "tetMaxVolume";
 			editorTemplate -addSeparator;
+			editorTemplate -addControl "time";
 			editorTemplate -addControl "displayFemMesh";
 			editorTemplate -label "Display Data Source" -addControl "displayType";
 			editorTemplate -label "Ext. Force Display Length" -addControl "fieldForceShowLength";
 			editorTemplate -addControl "meshTransform";
 		editorTemplate -endLayout;
 		
-		editorTemplate -beginLayout "FEM Parameters" -collapse false;
+		editorTemplate -beginLayout "Material" -collapse false;
 			editorTemplate -addControl "youngModulus";
 			editorTemplate -addControl "nu";
 			editorTemplate -addControl "density";
 		editorTemplate -endLayout;
 		
-		editorTemplate -beginLayout "Solver Parameters" -collapse false;
+		editorTemplate -beginLayout "Solver" -collapse false;
 			editorTemplate -addControl "stepTime";
 			editorTemplate -addControl "derivativeStep";
 			
@@ -119,7 +258,11 @@ global proc AErigSimulatorTemplate(string $nodeName)
 			editorTemplate -label "inverse CG. Step Tolerance" -addControl "inverseStepToleranceOfCG";
 			editorTemplate -label "max Newton Iteration" -addControl "maxIteration";
 			editorTemplate -label "max CG. Iteration" -addControl "maxIterationOfCG";			
-			editorTemplate -addControl "maxParamStepEachIteration";
+			editorTemplate -addControl "maxParamStepPerIter.";
+			
+			editorTemplate -beginLayout "Test Solver" -collapse true;
+			editorTemplate -callCustom "initTestGH" "modifyTestGH" "noAttr";	
+			editorTemplate -endLayout;
 			
 			editorTemplate -addSeparator;
 			editorTemplate -addControl "savePath";
@@ -133,7 +276,16 @@ global proc AErigSimulatorTemplate(string $nodeName)
 			editorTemplate -addControl "rigInitParameter";
 			editorTemplate -addControl "inputForce";
 		editorTemplate -endLayout;
-				
+			
+		editorTemplate -beginLayout "Collision" -collapse true;
+			editorTemplate -label "Proxy NParticle Name" -addControl "collisionParticle";
+			editorTemplate -label "Mesh Name"            -addControl "collisionMesh";
+			editorTemplate -callCustom "initCollisionControl" "modifyCollisionControl" "noAttr";	
+			editorTemplate -addControl "surfaceForce";
+			editorTemplate -addControl "surfaceForceFactor";
+			editorTemplate -addControl "surfaceForceBitmap";
+		editorTemplate -endLayout;
+		
 		editorTemplate -beginLayout "Rig Control" -collapse true;
 			editorTemplate -addControl "controlType";
 			editorTemplate -addControl "targetParam";
@@ -144,7 +296,7 @@ global proc AErigSimulatorTemplate(string $nodeName)
 		editorTemplate -suppress "fieldData";
 		editorTemplate -suppress "riggedMesh";
 		
-		editorTemplate -beginLayout (uiRes("m_AElocatorTemplate.kLocatorAttributes")) -collapse 0;
+		editorTemplate -beginLayout (uiRes("m_AElocatorTemplate.kLocatorAttributes")) -collapse true;
 			AElocatorCommon $nodeName;
 		editorTemplate -endLayout;
 

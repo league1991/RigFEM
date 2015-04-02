@@ -13,6 +13,9 @@
 #define NODE_DATA_SWITCH_NAME		"dataSwitch"
 #define NODE_DATA_SWITCH_ID			4500003
 
+#define NODE_SIMPLE_1D_NOISE_NAME	"simple1DNoise"
+#define NODE_SIMPLE_1D_NOISE_ID		4500004
+
 class Global
 {
 public:

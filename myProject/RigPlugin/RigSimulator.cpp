@@ -28,7 +28,7 @@ void RigFEM::RigSimulator::allocateSimObj()
 	m_recorder= &m_solver->getRecorder();
 }
 
-bool RigFEM::RigSimulator::testHessian( int curFrame )
+bool RigFEM::RigSimulator::testHessian( int curFrame, double noiseN, double noiseP )
 {
 	if (!m_recorder || !m_rigMesh || !m_solver)
 		return false;
@@ -36,20 +36,19 @@ bool RigFEM::RigSimulator::testHessian( int curFrame )
 	// 设置当前帧状态
 	m_solver->setCurrentFrame(curFrame);
 	RigStatus lastStatus, curStatus;
-	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
+	bool res = m_recorder->getStatus(curFrame, lastStatus);
 	if (!res)
 		res = m_solver->getRestStatus(lastStatus);
-	res&= m_recorder->getStatus(curFrame, curStatus);
+	res&= m_recorder->getStatus(curFrame+1, curStatus);
 	if (!res)
 		res = m_solver->getRestStatus(curStatus);
 	if (!res)
 		return false;
-	double noiseN = 1.0, noiseP = 1.0;
 	m_rigMesh->testCurFrameHessian(lastStatus, curStatus, noiseN, noiseP);
 	return true;
 }
 
-bool RigFEM::RigSimulator::testGradient( int curFrame )
+bool RigFEM::RigSimulator::testGradient( int curFrame, double noiseN, double noiseP )
 {
 	if (!m_recorder || !m_rigMesh || !m_solver)
 		return false;
@@ -57,16 +56,15 @@ bool RigFEM::RigSimulator::testGradient( int curFrame )
 	// 设置当前帧状态
 	m_solver->setCurrentFrame(curFrame);
 	RigStatus lastStatus, curStatus;
-	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
+	bool res = m_recorder->getStatus(curFrame, lastStatus);
 	if (!res)
 		res = m_solver->getRestStatus(lastStatus);
-	res&= m_recorder->getStatus(curFrame, curStatus);
+	res&= m_recorder->getStatus(curFrame+1, curStatus);
 	if (!res)
 		res = m_solver->getRestStatus(curStatus);
 	if (!res)
 		return false;
 
-	double noiseN = 1.0, noiseP = 1.0;
 	m_rigMesh->testCurFrameGrad(lastStatus, curStatus, noiseN, noiseP);
 	return true;
 }
@@ -86,7 +84,7 @@ bool RigFEM::RigSimulator::stepRig( int curFrame )
 	// 设置上一帧状态
 	m_solver->setCurrentFrame(curFrame);
 	RigStatus s;
-	bool res = m_recorder->getStatus(curFrame-1, s);
+	bool res = m_recorder->getStatus(curFrame, s);
 	if (!res)
 		res = m_solver->getRestStatus(s);
 	if (res)
@@ -106,7 +104,7 @@ bool RigFEM::RigSimulator::stepRig( int curFrame )
 
 	// 记录结果
 	s = m_solver->getFinalStatus();
-	return m_recorder->setStatus(curFrame, s);
+	return m_recorder->setStatus(curFrame+1, s);
 }
 
 
@@ -134,6 +132,9 @@ bool RigSimulator::init( tetgenio& surfMesh, RigSimulationNode* node, EigVec ini
 		m_rigMesh->getInternalPntIdx(), m_rigMesh->getSurfacePntIdx(),
 		pnts);
 
+	RigStatus initStatus;
+	m_solver->getRestStatus(initStatus);
+	m_recorder->setStatus(curFrame, initStatus);
 	return res;
 }
 
@@ -220,10 +221,10 @@ bool RigFEM::RigSkinSimulator::testHessian( int curFrame )
 	// 设置当前帧状态
 	m_solver->setCurrentFrame(curFrame);
 	RigStatus lastStatus, curStatus;
-	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
+	bool res = m_recorder->getStatus(curFrame, lastStatus);
 	if (!res)
 		res = m_solver->getRestStatus(lastStatus);
-	res&= m_recorder->getStatus(curFrame, curStatus);
+	res&= m_recorder->getStatus(curFrame+1, curStatus);
 	if (!res)
 		res = m_solver->getRestStatus(curStatus);
 	if (!res)
@@ -242,10 +243,10 @@ bool RigFEM::RigSkinSimulator::testGradient( int curFrame )
 	// 设置当前帧状态
 	m_solver->setCurrentFrame(curFrame);
 	RigStatus lastStatus, curStatus;
-	bool res = m_recorder->getStatus(curFrame-1, lastStatus);
+	bool res = m_recorder->getStatus(curFrame, lastStatus);
 	if (!res)
 		res = m_solver->getRestStatus(lastStatus);
-	res&= m_recorder->getStatus(curFrame, curStatus);
+	res&= m_recorder->getStatus(curFrame+1, curStatus);
 	if (!res)
 		res = m_solver->getRestStatus(curStatus);
 	if (!res)

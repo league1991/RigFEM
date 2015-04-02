@@ -131,7 +131,6 @@ namespace RigFEM
 		int			m_curFrame;			// 当前帧号
 
 		RigControlType m_controlType;	// 是否加入控制
-		static const char* s_targetParam; // 目标参数速度
 
 		// 以下是迭代的终止条件
 		int			m_maxIter;			// 最大迭代次数			
@@ -143,6 +142,11 @@ namespace RigFEM
 		double		m_iterMaxStepSize;	// 迭代过程中最大步长,每次参数各个分量的增量不得超过此值
 
 		int			m_maxStaticSolveIter;
+
+		// 额外传递的状态记录名
+		static const char*		s_dPName;					// 参数前后帧的值增量
+		static const char*		s_initStepName;				// 迭代初始步长
+
 	};
 	class PointParamSolver:public NewtonSolver
 	{
@@ -184,9 +188,6 @@ namespace RigFEM
 		RiggedSkinMesh*	m_fem;
 		LineSearcher	m_lineSearch;
 
-		// 额外传递的状态记录名
-		static const char*		s_dPName;					// 参数前后帧的值增量
-		static const char*		s_initStepName;				// 迭代初始步长
 
 		// 记录模拟出来的参数变化
 		vector<EigVec>			m_paramResult;				// 参数向量，包括关键帧驱动的参数，和模拟出来的参数

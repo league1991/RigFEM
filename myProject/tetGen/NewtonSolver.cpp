@@ -3,10 +3,8 @@
 #include "RiggedSkinMesh.h"
 using namespace RigFEM;
 
-const char* RigFEM::ParamSolver::s_initStepName = "initStep";
-const char* RigFEM::ParamSolver::s_dPName = "Pi-Pi-1";
-
-const char* RigFEM::NewtonSolver::s_targetParam = "targetParam";
+const char* RigFEM::NewtonSolver::s_initStepName = "initStep";
+const char* RigFEM::NewtonSolver::s_dPName = "Pi-Pi-1";
 
 LineSearcher::~LineSearcher(void)
 {
@@ -230,30 +228,106 @@ bool RigFEM::PointParamSolver::step()
 	m_fem->setControlTarget(tarParam, tarParamVelocity);
 	m_fem->updateExternalAndControlForce();
 
-	EigVec p,n;
-	m_fem->getDof(n,p);
+	EigVec P,N;
+	m_fem->getDof(N,P);
+	EigVec PkPk_1;
+	if (m_initStatus.getCustom(s_dPName, PkPk_1))
+	{
+		// 根据上一帧的变化趋势推测参数初始值
+		P += PkPk_1;
+	}
 	double t = m_fem->getCurTime();
-	int nIntDof = n.size();
-	int nParam  = p.size();
+	int nIntDof = N.size();
+	int nParam  = P.size();
 	EigVec tVec(1);
 	tVec[0] = t;
 
 	bool isSucceed = true;
 	EigDense  Hpp, Hnp, Hpn;
 	EigSparse Hnn;
-	EigVec	 G,G0,x,dx,dN,dP,dGN,dGP;
+	EigVec	 G,G0,x,dx,dx0,dN,dP,dGN,dGP;
+	RigStatus resultStatus;
 	int maxIter = m_maxIter;
 
-	char fileName[100];
-	sprintf(fileName, "I:/Programs/VegaFEM-v2.1/myProject/RigPlugin/%dFrame.m", m_paramResult.size());
-	//ofstream file(fileName);
+	// 准备共轭梯度法参数
+	double    initStepSize;
+	if (!m_initStatus.getCustom(s_initStepName, initStepSize))
+		initStepSize = 1e-6;
+	double	  stepSize = initStepSize;
+	m_lineSearch.setC(1e-4, 0.45);
+	m_lineSearch.setMaxZoomIter(15);
+	const double minPStep = 1e-2, maxPStep = 10;		// 限制每步参数变化范围
+	double iterMaxStep = m_iterMaxStepSize;
+
+	// 共轭梯度法求解
+	Utilities::mergeVec(N,P,x);							// x = [n p]
+	for (int ithIter = 0; ithIter < m_maxCGIter; ++ithIter)
+	{
+		PRINT_F("##################### %dth conjugate gradient ####################", ithIter);
+		double f;
+		isSucceed &= m_fem->computeValueAndGrad(x, tVec, &f, &G);
+		double GNorm = G.norm();
+		PRINT_F("f = %lf, |G| = %lf, minGradSize = %e", f, GNorm, m_minGradSize);
+
+		if(G.norm() < m_minGradSize * 20) 
+			break;
+		if (ithIter != 0 && dx.norm() < m_minCGStepSize)
+			break;
+
+		if (ithIter == 0)
+			dx = -G;
+		else
+		{
+			dx = -G + dx0 * G.dot(G) / G0.dot(G0);
+			if (G.dot(dx) > 0)
+				dx = -G;
+		}
+
+		// 选择合适的初始步长
+		if (ithIter != 0)
+			initStepSize = stepSize * G0.dot(dx0) / G.dot(dx);
+		double dxMax = dx.cwiseAbs().maxCoeff();
+		initStepSize = CLAMP_DOUBLE(minPStep/dxMax, maxPStep/dxMax, initStepSize);
+		m_lineSearch.setInitStep(initStepSize);
+
+		// 一维搜索
+		double df = G.dot(dx);					// 此为自变量变化G时函数增量
+		int res = m_lineSearch.lineSearch(x, dx, tVec, stepSize, &f, &df);
+		if (ithIter == 0 && res == LineSearcher::LS_NONE)
+		{
+			resultStatus.addOrSetCustom(s_initStepName, CLAMP_DOUBLE(1e-9, 1e-1, stepSize));
+		}
+		if (res == 0)
+		{
+			PRINT_F("line search succeed, step = %le", stepSize);
+		}
+		else
+		{
+			PRINT_F("line search FAILED");
+		}
+
+		dx *= stepSize;
+		MathUtilities::clampVector(dx, iterMaxStep);
+		x += dx;
+		PRINT_F("|dx|=%le", dx.norm());
+
+		G0 = G;
+		dx0 = dx;
+	}
+	// 写回求解结果
+	for(int i = 0; i < N.size(); ++i)
+		N[i] = x[i];
+	for(int i = 0; i < P.size(); ++i)
+		P[i] = x[i+nIntDof];
+
+	m_lineSearch.setC(1e-4, 0.9);
 	for (int ithIter = 0; ithIter < maxIter; ++ithIter)
 	{
 		// 计算当前q p值的函数值、梯度值和Hessian
-		PRINT_F("######################### %dth Iteration #########################", ithIter);
+		PRINT_F("#########################  %dth Newton   #########################", ithIter);
 		int t0 = clock();
 		double   f;
-		Utilities::mergeVec(n,p,x);							// x = [n p]
+		Utilities::mergeVec(N,P,x);							// x = [n p]
 		isSucceed &= m_fem->computeValueAndGrad(x, tVec, &f, &G);
 		int t1 = clock();
 		//PRINT_F("compute value and grad:%f", (t1-t0)/1000.f);
@@ -275,36 +349,11 @@ bool RigFEM::PointParamSolver::step()
 
 		// 计算Hessian
 		EigDense* pHpp = &Hpp;//ithIter == 0 ? &Hpp : NULL;
-		isSucceed &= m_fem->computeHessian(n,p, t, Hnn, Hnp, Hpn, pHpp);
+		isSucceed &= m_fem->computeHessian(N,P, t, Hnn, Hnp, Hpn, pHpp);
 		int t2 = clock();
 		//PRINT_F("compute hessian:%f",(t2-t1)/1000.f);
 		if (!isSucceed)
-			return false;
-		// 若某参数梯度为0，此时为预防方程退化，强制修改方程系数，令该参数增量为0
-// 		for (int ithParam = 0; ithParam < nParam; ++ithParam)
-// 		{ 
-// 			if (abs(Gp[ithParam]) < 1e-4)
-// 			{
-// 				const double v = 1e5;
-// 				for (int ithIntDof = 0; ithIntDof < nIntDof; ++ithIntDof)
-// 				{
-// 					Hnp(ithIntDof, ithParam) = v;
-// 				}
-// 				for (int jthParam = 0; jthParam < nParam; ++jthParam)
-// 				{
-// 					Hpp(jthParam, ithParam) = v;
-// 				}
-// 			}
-// 		}
-// 		string HnnStr = Utilities::matToString(Hnn, "Hnn");
-// 		string HnpStr = Utilities::matToString(Hnp, "Hnp");
-// 		string HpnStr = Utilities::matToString(Hpn, "Hpn");
-// 		string HppStr = Utilities::matToString(Hpp, "Hpp");
-// 		file << HnnStr;
-// 		file << HnpStr;
-// 		file << HpnStr;
-// 		file << HppStr;
-		
+			return false;		
 
 		if (ithIter > 0 && 0)
 		{
@@ -346,24 +395,29 @@ bool RigFEM::PointParamSolver::step()
 		EigDense A = Hpp - Hpn * invHnnHnp;
 		EigDense b = -Gp + Hpn * invHnnN;
 		dP= A.colPivHouseholderQr().solve(b);
-		string Astr = Utilities::matToString(A, "A");
-		string bStr = Utilities::matToString(b, "b");
-		//file << Astr << bStr;
 
 		EigVec   b2= -Gn - Hnp * dP;
 		dN= solver.solve(b2);
-		//Global::showVector(Gp, "Gp");
-		//Global::showVector(dP, "dP");
 		int t3 = clock();
 		//PRINT_F("compute dN, dP:%f",(t3-t2)/1000.f);
 
 		// 进行一维搜索
 		Utilities::mergeVec(dN, dP, dx);
 		double df = G.dot(dx);
+		if (df > 0)
+		{
+			PRINT_F("failed to find newton direction, use gradient directly");
+			dx = -G;
+			m_lineSearch.setInitStep(initStepSize);
+			df = G.dot(dx);
+		}
+		else
+		{
+			m_lineSearch.setInitStep(1.0);
+		}
 		double a;
-		//m_lineSearch.setInitStep(3.05);
 		int res = m_lineSearch.lineSearch(x,dx,tVec,a, &f, &df);
-		if (res == 0 && a > 1e-4)
+		if (res == 0)
 		{
 			PRINT_F("a = %lf", a);
 			if (a != 1.0)
@@ -376,6 +430,8 @@ bool RigFEM::PointParamSolver::step()
 		{
 			PRINT_F("line search failed: a = %lf", a);
 		}
+		MathUtilities::clampVector(dN, iterMaxStep);
+		MathUtilities::clampVector(dP, iterMaxStep);
 		int t4 = clock();
 		//PRINT_F("line search:%f", (t4-t3)/1000.f);
 
@@ -388,18 +444,17 @@ bool RigFEM::PointParamSolver::step()
 		resiP = resiP.cwiseAbs();
 
 		// 更新自变量
-		n += dN;
-		p += dP;
+		N += dN;
+		P += dP;
 
 		PRINT_F("|dN|=%le |dP|=%le |resiN|∞=%le |resiP|∞=%le", dN.norm(), dP.norm(), resiN.maxCoeff(), resiP.maxCoeff());
 		PRINT_F("minStepSize = %e", m_minStepSize);
-		//Global::showVector(p, "p");
+		Global::showVector(P, "P");
 
 		G0 = G;
 	}
-	//file.close();
 	// 更新为最终迭代状态
-	m_fem->setDof(n, p);
+	m_fem->setDof(N, P);
 
 	// 记录新状态
 	int nTotParam = m_fem->getRigObj()->getNParam();
@@ -407,6 +462,8 @@ bool RigFEM::PointParamSolver::step()
 	m_fem->getRigObj()->getParam(&totParam[0]);
 	m_paramResult.push_back(totParam);
 	m_finalStatus = m_fem->getStatus();
+	m_finalStatus.mergeCustom(resultStatus);
+	m_finalStatus.addOrSetCustom(s_dPName, m_finalStatus.getP() - m_initStatus.getP());
 
 	// 输出状态
 	PRINT_F("time: %.2lf", t);
@@ -685,6 +742,7 @@ bool RigFEM::ParamSolver::step()
 		dP *= stepSize;
 		MathUtilities::clampVector(dP, iterMaxStep);
 		P += dP;
+		Global::showVector(P, "P");
 		PRINT_F("|dP|=%le", dP.norm());
 
 		G0 = G;
@@ -773,6 +831,7 @@ bool RigFEM::ParamSolver::step()
 		// 更新自变量
 		P += dP;
 
+		Global::showVector(P, "P");
 		PRINT_F("|dP|=%le |resiP|∞=%le", dP.norm(), resiP.maxCoeff());
 		PRINT_F("minStepSize = %e", m_minStepSize);
 		//Global::showVector(P, "p");

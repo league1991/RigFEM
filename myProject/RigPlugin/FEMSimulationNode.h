@@ -49,12 +49,13 @@ public:
 
 	// 保存数据
 	bool				saveSimulationData(const char* fileName);
-	bool				computeExternalForce(const EigVec& pos, const EigVec& vel, const EigVec& m, 
-											 double time, EigVec& extForce);
-
+	bool				computeExternalForce( const EigVec& pos, const EigVec& vel, const EigVec& m, double time, EigVec& extForce , EigVec& surfForce);
 	bool				getControlParams(EigVec& targetParam, EigVec& propGain, EigVec& deriGain);
 	bool				getControlGain(EigVec& propGain, EigVec& deriGain);
 	bool				getControlTarget(EigVec& targetParam);
+
+	int					getNumInternalPnt();
+	int					getNumSurfacePnt();
 private:
 	
 	int					getNumParam();			// 获取当前有效的参数个数
@@ -71,9 +72,8 @@ private:
 
 	// 节点属性
 	void				printFieldData();
-	MStatus				getInputForce(EigVec& force);
+	MStatus				getInputForce( EigVec& fieldForce, EigVec& surfForce );
 	MStatus				testField();
-
 
 	MBoundingBox		m_box;
 
@@ -90,6 +90,7 @@ private:
 	static MObject		m_dispType;				// 显示方式,直接显示模拟结果还是初始参数
 	static MObject		m_dispFemMesh;			// 是否显示fem网格
 	static MObject      m_fieldForceFactor;		// 力线长度因子
+	static MObject		m_time;					// 输入的时间，用于驱动节点求值
 
 	// 牛顿法参数
 	static MObject		m_deriStep;				// 参数求导时的有限差商大小
@@ -112,6 +113,13 @@ private:
 	static MObject		m_fieldDataVelocity;	// 速度子属性
 	static MObject		m_fieldDataMass;		// 质量子属性
 	static MObject		m_fieldDataDeltaTime;	// 时间子属性
+
+	// 碰撞
+	static MObject		m_surfaceForce;			// 表面受到的力
+	static MObject		m_surfaceForceBitmap;	// 记录各个点表面力是否有效的位图
+	static MObject      m_surfaceForceFactor;	// 表面力强度因子
+	static MObject		m_collisionParticle;	// 用于代理碰撞检测的n粒子形状节点
+	static MObject		m_collisionMesh;		// 粒子追踪的碰撞物体
 
 	// PD自动控制参数
 	static MObject		m_controlType;			// 自动控制开关
@@ -152,6 +160,13 @@ private:
 	static const char*	m_targetParamName[2];			// 期望的状态	
 	static const char*	m_proportionalGainName[2];		// 比例控制强度
 	static const char*	m_derivativeGainRatioName[2];	// 微分控制强度
+	static const char*  m_surfaceForceName[2];
+	static const char*  m_collisionParticleName[2];
+	static const char*  m_collisionMeshName[2];
+	static const char*	m_surfaceForceBitmapName[2];	// 记录各个点表面力是否有效的位图
+	static const char*  m_surfaceForceFactorName[2];	// 表面力强度因子
+	static const char*  m_timeName[2];
+
 
 	SimulationType		m_simTypeFlag;
 

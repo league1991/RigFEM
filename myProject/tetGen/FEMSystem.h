@@ -80,6 +80,8 @@ public:
 	const vector<int>& getSurfacePntIdx()const{return m_surfPntIdx;}
 	void getMeshPntPos(vector<double>& pnts)const;
 	int getNTotPnt()const{return m_nTotPnt;}
+	int getNSurfPnt()const{return m_nSurfPnt;}
+	int getNIntPnt()const{return m_nIntPnt;}
 
 	// 各种测试函数，调试专用
 	// 给定当前的配置n,p,检查Hessian是否正确逼近

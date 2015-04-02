@@ -84,12 +84,12 @@ MStatus RigFEM::GeneralRig::getMesh( MObject& meshObj )
 	return s;
 }
 
-bool RigFEM::GeneralRig::computeExternalForce( const EigVec& pos, const EigVec& vel, const EigVec& m, double time, EigVec& extForce )
+bool RigFEM::GeneralRig::computeExternalForce( const EigVec& pos, const EigVec& vel, const EigVec& m, double time, EigVec& extForce, EigVec& surfForce )
 {
 	if (!m_node)
 		return false;
 
-	return m_node->computeExternalForce(pos, vel, m, time, extForce);
+	return m_node->computeExternalForce(pos, vel, m, time, extForce, surfForce);
 }
 
 bool RigFEM::GeneralRig::getControlParams( EigVec& targetParam, EigVec& propGain, EigVec& deriGain )
