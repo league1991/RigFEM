@@ -40,6 +40,11 @@ public:
 	bool				resetRig();
 	bool				stepRig();					// 动态模拟
 	bool				staticStepRig();			// 静态模拟
+	bool				stepWithEleGF();			// 静态模拟，并保持每个元素的广义力
+	bool				saveGFResult(const char* fileName);
+	bool				loadElementMaterial();
+	bool				resetElementMaterial();
+
 	MStatus				setParamPlug( const double* param, int nParam);
 
 	// 用于测试
@@ -75,6 +80,9 @@ private:
 	MStatus				getInputForce( EigVec& fieldForce, EigVec& surfForce );
 	MStatus				testField();
 
+	// 显示配置
+	RigFEM::MeshDispConfig getDisplayConfig();
+
 	MBoundingBox		m_box;
 
 	static MObject		m_initParam;			// 参数初始值
@@ -89,6 +97,9 @@ private:
 	static MObject		m_timeStep;				// 时间步长
 	static MObject		m_dispType;				// 显示方式,直接显示模拟结果还是初始参数
 	static MObject		m_dispFemMesh;			// 是否显示fem网格
+	static MObject		m_dispVertex;			// 是否显示顶点
+	static MObject		m_dispEdge;				// 是否显示边
+	static MObject		m_dispBBox;				// 是否显示包围盒
 	static MObject      m_fieldForceFactor;		// 力线长度因子
 	static MObject		m_time;					// 输入的时间，用于驱动节点求值
 
@@ -101,6 +112,15 @@ private:
 	static MObject		m_weightPath;			// 权重路径
 	static MObject		m_resultPath;			// 结果路径
 	static MObject		m_maxParamStep;			// 每次迭代参数的最大增量
+
+	// 自适应材料硬度
+	static MObject		m_GFResultPath;			// 广义力的保存路径
+	static MObject		m_materialPath;			// 材料相对硬度文件
+	static MObject		m_displayMaterial;		// 是否显示材料硬度
+	static MObject		m_minFactor;			// 颜色范围
+	static MObject		m_maxFactor;			// 
+	static MObject		m_cutAxis;				// 切割轴向
+	static MObject		m_cutRatio;				// 切割比例
 
 	// 共轭梯度法参数
 	static MObject		m_cgMinStepSize;		// 迭代的最小步长，若步长小于此值，终止迭代
@@ -144,9 +164,13 @@ private:
 	static const char*  m_simTypeName[2];				// 模拟算法选择
 	static const char*	m_weightPathName[2];			// 权重路径
 	static const char*  m_resultPathName[2];			// 结果路径
+	static const char*  m_GFResultPathName[2];			// 广义力保存路径
 	static const char*	m_maxParamStepName[2];			// 每次迭代参数的最大增量
 	static const char*  m_dispTypeName[2];
 	static const char*  m_dispFemMeshName[2];			// 是否显示fem网格
+	static const char*	m_dispVertexName[2];			// 是否显示顶点
+	static const char*	m_dispEdgeName[2];				// 是否显示边
+	static const char*	m_dispBBoxName[2];				// 是否显示包围盒
 	static const char*  m_cgMinStepSizeName[2];
 	static const char*  m_maxCGIterName[2];				// 共轭梯度法最大迭代次数
 	static const char*  m_inputForceName[2];			// 场的输入力
@@ -166,6 +190,12 @@ private:
 	static const char*	m_surfaceForceBitmapName[2];	// 记录各个点表面力是否有效的位图
 	static const char*  m_surfaceForceFactorName[2];	// 表面力强度因子
 	static const char*  m_timeName[2];
+	static const char*	m_displayMaterialName[2];		// 是否显示材料硬度
+	static const char*	m_minFactorName[2];				// 颜色范围
+	static const char*	m_maxFactorName[2];				// 
+	static const char*	m_cutAxisName[2];				// 切割轴向
+	static const char*	m_cutRatioName[2];				// 切割比例
+	static const char*  m_materialPathName[2];			// 材料相对硬度文件
 
 
 	SimulationType		m_simTypeFlag;

@@ -45,7 +45,27 @@ const char* RigSimulationNode::m_surfaceForceName[2]={"surfaceForce","sfc"};
 const char* RigSimulationNode::m_surfaceForceFactorName[2]={"surfaceForceFactor", "sfcFtr"};
 const char* RigSimulationNode::m_surfaceForceBitmapName[2]={"surfaceForceBitmap", "sfcBmp"};
 const char* RigSimulationNode::m_timeName[2] = {"time", "t"};
+const char* RigSimulationNode::m_GFResultPathName[2] = {"generalForceResultPath", "gfResPath"};
+const char* RigSimulationNode::m_cutRatioName[2] = {"cutPlaneRatio", "cutPRatio"};
+const char* RigSimulationNode::m_cutAxisName[2]  = {"cutAxis", "cutAxis"};
+const char* RigSimulationNode::m_maxFactorName[2] = {"maxColorFactor", "maxClrFtr"};
+const char* RigSimulationNode::m_minFactorName[2] = {"minColorFactor", "minClrFtr"};
+const char* RigSimulationNode::m_displayMaterialName[2] = {"displayMaterial", "dispMtl"};
+const char* RigSimulationNode::m_materialPathName[2] = {"materialPath", "matPath"};
+const char* RigSimulationNode::m_dispBBoxName[2] = {"displayBoundingBox","dispBBox"};
+const char* RigSimulationNode::m_dispEdgeName[2] = {"displayEdge", "dispEdge"};
+const char* RigSimulationNode::m_dispVertexName[2] = {"displayVertex", "dispVtx"};
 
+MObject RigSimulationNode::m_dispBBox;
+MObject RigSimulationNode::m_dispEdge;
+MObject RigSimulationNode::m_dispVertex;
+MObject RigSimulationNode::m_materialPath;
+MObject RigSimulationNode::m_cutRatio;
+MObject RigSimulationNode::m_cutAxis;
+MObject RigSimulationNode::m_maxFactor;
+MObject RigSimulationNode::m_minFactor;
+MObject RigSimulationNode::m_displayMaterial;
+MObject RigSimulationNode::m_GFResultPath;
 MObject RigSimulationNode::m_time;
 MObject RigSimulationNode::m_surfaceForce;
 MObject RigSimulationNode::m_surfaceForceFactor;
@@ -111,14 +131,11 @@ void RigSimulationNode::postConstructor()
 
 void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::DisplayStyle style, M3dView:: DisplayStatus )
 {
-	
 	view.beginGL();
 	glPushAttrib(GL_CURRENT_BIT);
 
 	drawIcon();
-
-	//testField();
-	//printFieldData();
+	//PRINT_F("draw");
 
 	m_box = MBoundingBox(MPoint(-1.1,-0.5,-1.1), MPoint(4.1,0.5,1.1));
 	if (m_simulator)
@@ -138,8 +155,9 @@ void RigSimulationNode::draw( M3dView & view, const MDagPath & path, M3dView::Di
 		if (isDrawFemMesh)
 		{
 			double bbox[6];
-			MPlug fieldForceFactorPlug = Global::getPlug(this, m_fieldForceFactorName[0]);
-			m_simulator->setExternalForceDispFactor(fieldForceFactorPlug.asDouble());
+
+			MeshDispConfig config = getDisplayConfig();
+			m_simulator->setMeshConfig(config);
 			bool res = m_simulator->showStatus(curFrame, bbox);
 			if (res)
 			{
@@ -172,6 +190,8 @@ MStatus RigSimulationNode::initialize()
 	MFnUnitAttribute	uAttr;
 	MFnCompoundAttribute cAttr;
 
+	// 基本属性
+	{
 	m_param = nAttr.create(m_paramName[0], m_paramName[1], MFnNumericData::kDouble,0, &s);
 	nAttr.setKeyable(false);
 	nAttr.setStorable(true);
@@ -261,7 +281,85 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setSoftMax(1);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
+	m_mesh = tAttr.create(m_meshName[0], m_meshName[1], MFnData::kMesh, &s);
+	tAttr.setStorable(false);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setReadable(false);
+	tAttr.setArray(false);
+	tAttr.setKeyable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 
+	m_transformMatrix = mAttr.create(m_transformMatrixName[0], m_transformMatrixName[1]);
+	mAttr.setHidden(false);
+	mAttr.setReadable(false);
+	mAttr.setWritable(true);
+	mAttr.setKeyable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+
+	m_dispType = eAttr.create(m_dispTypeName[0], m_dispTypeName[1]);
+	eAttr.addField("Simulation", DISP_SIM);
+	eAttr.addField("Initial Value", DISP_INIT);
+	eAttr.setHidden(false);
+	eAttr.setReadable(true);
+	eAttr.setWritable(true);
+	eAttr.setStorable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+
+	m_dispFemMesh = nAttr.create(m_dispFemMeshName[0], m_dispFemMeshName[1], MFnNumericData::kBoolean, 1, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setAffectsAppearance(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+
+	m_dispVertex = nAttr.create(m_dispVertexName[0], m_dispVertexName[1], MFnNumericData::kBoolean, 1, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setAffectsAppearance(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+
+	m_dispEdge = nAttr.create(m_dispEdgeName[0], m_dispEdgeName[1], MFnNumericData::kBoolean, 1, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setAffectsAppearance(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_dispBBox = nAttr.create(m_dispBBoxName[0], m_dispBBoxName[1], MFnNumericData::kBoolean, 0, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setAffectsAppearance(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_time = uAttr.create(m_timeName[0], m_timeName[1], MFnUnitAttribute::kTime,1, &s);
+	uAttr.setKeyable(true);
+	uAttr.setStorable(false);
+	uAttr.setHidden(false);
+	uAttr.setWritable(true);
+	uAttr.setReadable(false);
+	uAttr.setAffectsAppearance(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	}
+
+
+	
+	// 求解器属性
+	{
 	m_deriStep = nAttr.create(m_deriStepName[0], m_deriStepName[1], MFnNumericData::kDouble,1e-3, &s);
 	nAttr.setKeyable(false);
 	nAttr.setStorable(true);
@@ -304,22 +402,6 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setMax(50);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
-	m_mesh = tAttr.create(m_meshName[0], m_meshName[1], MFnData::kMesh, &s);
-	tAttr.setStorable(false);
-	tAttr.setHidden(false);
-	tAttr.setWritable(true);
-	tAttr.setReadable(false);
-	tAttr.setArray(false);
-	tAttr.setKeyable(true);
-	CHECK_MSTATUS_AND_RETURN_IT(s);
-
-	m_transformMatrix = mAttr.create(m_transformMatrixName[0], m_transformMatrixName[1]);
-	mAttr.setHidden(false);
-	mAttr.setReadable(false);
-	mAttr.setWritable(true);
-	mAttr.setKeyable(true);
-	CHECK_MSTATUS_AND_RETURN_IT(s);
-
 	m_simType = eAttr.create(m_simTypeName[0], m_simTypeName[1]);
 	eAttr.addField("Standard", RigSimulationNode::SIM_STANDARD);
 	eAttr.addField("Skin",   RigSimulationNode::SIM_SKIN);
@@ -327,32 +409,6 @@ MStatus RigSimulationNode::initialize()
 	eAttr.setReadable(true);
 	eAttr.setWritable(true);
 	eAttr.setStorable(true);
-	CHECK_MSTATUS_AND_RETURN_IT(s);
-
-	m_dispType = eAttr.create(m_dispTypeName[0], m_dispTypeName[1]);
-	eAttr.addField("Simulation", DISP_SIM);
-	eAttr.addField("Initial Value", DISP_INIT);
-	eAttr.setHidden(false);
-	eAttr.setReadable(true);
-	eAttr.setWritable(true);
-	eAttr.setStorable(true);
-	CHECK_MSTATUS_AND_RETURN_IT(s);
-
-	m_weightPath = tAttr.create(m_weightPathName[0], m_weightPathName[1], MFnData::kString);
-	tAttr.setKeyable(true);
-	tAttr.setStorable(true);
-	tAttr.setHidden(false);
-	tAttr.setWritable(true);
-	tAttr.setUsedAsFilename(true);
-	CHECK_MSTATUS_AND_RETURN_IT(s);
-
-
-	m_resultPath = tAttr.create(m_resultPathName[0], m_resultPathName[1], MFnData::kString);
-	tAttr.setKeyable(true);
-	tAttr.setStorable(true);
-	tAttr.setHidden(false);
-	tAttr.setWritable(true);
-	tAttr.setUsedAsFilename(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 
@@ -366,15 +422,6 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setMax(1e7);
 	nAttr.setSoftMin(0.1);
 	nAttr.setSoftMax(3);
-	CHECK_MSTATUS_AND_RETURN_IT(s);
-
-	m_dispFemMesh = nAttr.create(m_dispFemMeshName[0], m_dispFemMeshName[1], MFnNumericData::kBoolean, 1, &s);
-	nAttr.setKeyable(false);
-	nAttr.setStorable(true);
-	nAttr.setHidden(false);
-	nAttr.setWritable(true); 
-	nAttr.setReadable(true);
-	nAttr.setAffectsAppearance(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	m_maxCGIter = nAttr.create(m_maxCGIterName[0], m_maxCGIterName[1], MFnNumericData::kInt,10, &s);
@@ -397,26 +444,27 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setMax(1e7);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
-	m_inputForce = tAttr.create(m_inputForceName[0], m_inputForceName[1], MFnData::kVectorArray, &s);
-	tAttr.setKeyable(false);
-	tAttr.setStorable(false);
+
+	m_weightPath = tAttr.create(m_weightPathName[0], m_weightPathName[1], MFnData::kString);
+	tAttr.setKeyable(true);
+	tAttr.setStorable(true);
 	tAttr.setHidden(false);
 	tAttr.setWritable(true);
-	tAttr.setReadable(true);
-	tAttr.setArray(true);
-	tAttr.setUsesArrayDataBuilder(true);
+	tAttr.setUsedAsFilename(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
-	m_time = uAttr.create(m_timeName[0], m_timeName[1], MFnUnitAttribute::kTime,1, &s);
-	uAttr.setKeyable(true);
-	uAttr.setStorable(false);
-	uAttr.setHidden(false);
-	uAttr.setWritable(true);
-	uAttr.setReadable(false);
-	uAttr.setAffectsAppearance(true);
+	m_resultPath = tAttr.create(m_resultPathName[0], m_resultPathName[1], MFnData::kString);
+	tAttr.setKeyable(true);
+	tAttr.setStorable(true);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setUsedAsFilename(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
+	}
+
 
 	// fieldData 属性，由多个子属性组成
+	{
 	m_fieldDataPosition = tAttr.create(m_fieldDataPositionName[0], m_fieldDataPositionName[1], MFnData::kVectorArray, &s);
 	tAttr.setKeyable(false);
 	tAttr.setStorable(false);
@@ -474,7 +522,19 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setAffectsAppearance(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
+	m_inputForce = tAttr.create(m_inputForceName[0], m_inputForceName[1], MFnData::kVectorArray, &s);
+	tAttr.setKeyable(false);
+	tAttr.setStorable(false);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setReadable(true);
+	tAttr.setArray(true);
+	tAttr.setUsesArrayDataBuilder(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	}
+
 	// PD控制器属性
+	{
 	m_controlType = eAttr.create(m_controlTypeName[0], m_controlTypeName[1]);
 	eAttr.addField("None", CONTROL_NONE);
 	eAttr.addField("Implicit Force",   CONTROL_IMPLICIT_FORCE);
@@ -521,8 +581,10 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setArray(true); 
 	nAttr.setUsesArrayDataBuilder(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
+	}
 
 	// 碰撞属性
+	{
 	m_surfaceForce = tAttr.create(m_surfaceForceName[0], m_surfaceForceName[1], MFnData::kVectorArray, &s);
 	tAttr.setKeyable(false);
 	tAttr.setStorable(false);
@@ -570,6 +632,79 @@ MStatus RigSimulationNode::initialize()
 	tAttr.setWritable(true);
 	tAttr.setReadable(true);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
+	}
+
+
+	// 硬度调整属性
+	{
+	m_GFResultPath = tAttr.create(m_GFResultPathName[0], m_GFResultPathName[1], MFnData::kString);
+	tAttr.setKeyable(true);
+	tAttr.setStorable(true);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setUsedAsFilename(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+
+	m_materialPath = tAttr.create(m_materialPathName[0], m_materialPathName[1], MFnData::kString);
+	tAttr.setKeyable(true);
+	tAttr.setStorable(true);
+	tAttr.setHidden(false);
+	tAttr.setWritable(true);
+	tAttr.setUsedAsFilename(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_displayMaterial = nAttr.create(m_displayMaterialName[0], m_displayMaterialName[1], MFnNumericData::kBoolean, 0, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setAffectsAppearance(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_minFactor = nAttr.create(m_minFactorName[0], m_minFactorName[1], MFnNumericData::kDouble,0, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0);
+	nAttr.setSoftMin(0);
+	nAttr.setSoftMax(2);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_maxFactor = nAttr.create(m_maxFactorName[0], m_maxFactorName[1], MFnNumericData::kDouble,2, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0);
+	nAttr.setSoftMin(0);
+	nAttr.setSoftMax(2);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_cutAxis = eAttr.create(m_cutAxisName[0], m_cutAxisName[1]);
+	eAttr.addField("X", AXIS_X);
+	eAttr.addField("Y", AXIS_Y);
+	eAttr.addField("Z", AXIS_Z);
+	eAttr.setHidden(false);
+	eAttr.setReadable(true);
+	eAttr.setWritable(true);
+	eAttr.setStorable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_cutRatio = nAttr.create(m_cutRatioName[0], m_cutRatioName[1], MFnNumericData::kDouble,1, &s);
+	nAttr.setKeyable(false);
+	nAttr.setStorable(true);
+	nAttr.setHidden(false);
+	nAttr.setWritable(true); 
+	nAttr.setReadable(true);
+	nAttr.setMin(0);
+	nAttr.setMax(1);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	}
 
 	s = addAttribute(m_param);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
@@ -611,6 +746,12 @@ MStatus RigSimulationNode::initialize()
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_dispFemMesh);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_dispVertex);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_dispEdge);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_dispBBox);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_maxCGIter);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_cgMinStepSize);
@@ -640,6 +781,20 @@ MStatus RigSimulationNode::initialize()
 	s = addAttribute(m_collisionMesh);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_time);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_GFResultPath);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_displayMaterial);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_minFactor);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_maxFactor);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_cutAxis);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_cutRatio);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_materialPath);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	s = attributeAffects(m_time, m_param);					// 驱动节点求值
@@ -678,6 +833,8 @@ MStatus RigSimulationNode::setParamToInit()
 }
 MStatus RigSimulationNode::compute( const MPlug& plug, MDataBlock& data )
 {
+	//PRINT_F("compute");
+
 	int curFrame = getCurFrame();
 	MStatus s;
 	if (plug == m_param || plug.parent() == m_param)
@@ -1080,6 +1237,21 @@ bool RigSimulationNode::staticStepRig()
 	return true;
 }
 
+bool RigSimulationNode::stepWithEleGF()
+{
+
+	if (!m_simulator || !m_simulator->isReady())
+		return false;
+
+	updateDeriStepSize();
+
+	int curFrame = getCurFrame();
+	EigVec initParam;
+	getInitParam(initParam);
+	m_simulator->stepAndSaveEleGFRig(curFrame, initParam);
+	return true;
+}
+
 RigSimulationNode::DisplayType RigSimulationNode::getDispType()
 {
 	MPlug dispPlug = Global::getPlug(this, m_dispTypeName[0]);
@@ -1370,6 +1542,65 @@ int RigSimulationNode::getNumSurfacePnt()
 	}
 	return m_simulator->getRiggedMesh()->getNSurfPnt();
 }
+
+bool RigSimulationNode::saveGFResult( const char* fileName )
+{
+	if (!m_simulator || !m_simulator->isReady())
+		return false;
+	return m_simulator->saveGFResult(fileName);
+}
+
+RigFEM::MeshDispConfig RigSimulationNode::getDisplayConfig()
+{
+	RigFEM::MeshDispConfig config;
+
+	MPlug fieldForceFactorPlug = Global::getPlug(this, m_fieldForceFactorName[0]);
+	MPlug displayMaterialPlug  = Global::getPlug(this, m_displayMaterialName[0]);
+	MPlug minFactorPlug  = Global::getPlug(this, m_minFactorName[0]);
+	MPlug maxFactorPlug  = Global::getPlug(this, m_maxFactorName[0]);
+	MPlug cutAxisPlug  = Global::getPlug(this, m_cutAxisName[0]);
+	MPlug cutRatioPlug  = Global::getPlug(this, m_cutRatioName[0]);
+	MPlug dispVertexPlug  = Global::getPlug(this, m_dispVertexName[0]);
+	MPlug dispEdgePlug  = Global::getPlug(this, m_dispEdgeName[0]);
+	MPlug dispBBoxPlug  = Global::getPlug(this, m_dispBBoxName[0]);
+
+	config.m_showMaterial = displayMaterialPlug.asBool();
+	config.m_showPoint = dispVertexPlug.asBool();
+	config.m_showEdge  = dispEdgePlug.asBool();
+	config.m_showBBox  = dispBBoxPlug.asBool();
+
+	config.m_extForceDispFactor = fieldForceFactorPlug.asDouble();
+	config.m_minMaterialFactor = minFactorPlug.asDouble();
+	config.m_maxMaterialFactor = maxFactorPlug.asDouble();
+	config.m_axis = (AxisType)cutAxisPlug.asShort();
+	config.m_axisFactor = cutRatioPlug.asDouble();
+
+	return config;
+}
+
+bool RigSimulationNode::loadElementMaterial()
+{
+	if (!m_simulator)
+	{
+		return false;
+	}
+	MPlug materialFileNamePlug = Global::getPlug(this, m_materialPathName[0]);
+	MString materialPath = materialFileNamePlug.asString();
+
+	m_simulator->loadElementMaterialFactor(materialPath.asChar());
+	return true;
+}
+
+bool RigSimulationNode::resetElementMaterial()
+{
+	if (!m_simulator)
+	{
+		return false;
+	}
+	return m_simulator->resetElementMaterialFactor();
+}
+
+
 
 
 

@@ -11,9 +11,18 @@ namespace RigFEM
 
 		virtual bool testGradient(int curFrame, double noiseN, double noiseP )=0;
 		virtual bool testHessian(int curFrame, double noiseN, double noiseP )=0;
-		virtual bool saveResult(const char* fileName)=0;
+
+		// 正常模拟各项功能
 		virtual bool stepRig(int curFrame)=0;
 		virtual bool staticStepRig(int curFrame, const EigVec& curParam)=0;
+		virtual bool saveResult(const char* fileName)=0;
+
+		// 修改四面体硬度各项功能
+		virtual bool stepAndSaveEleGFRig(int curFrame, const EigVec& curParam){return false;}
+		virtual bool saveGFResult(const char* fileName) = 0;
+		virtual bool loadElementMaterialFactor(const char* fileName);
+		virtual bool resetElementMaterialFactor();
+
 		virtual bool showStatus(int curFrame, double* bbox = 0)=0;
 		virtual bool getParam(int curFrame, EigVec& curParam)=0;
 		virtual bool setDeriStepSize(double step)=0;
@@ -24,6 +33,7 @@ namespace RigFEM
 
 		// 一些显示状态
 		MeshDispConfig& getMeshConfig(){return m_dispConfig;}
+		void			setMeshConfig(const MeshDispConfig& config){m_dispConfig = config;}
 		void			setExternalForceDispFactor(double factor);
 	protected:
 		// 一些显示状态
@@ -31,6 +41,8 @@ namespace RigFEM
 		
 		// rig网格
 		RiggedMesh*		m_rigMesh;
+
+		static const char*s_materialName;
 	};
 	class GeneralRig;
 	class RigSimulator:public SimulatorBase
@@ -56,11 +68,13 @@ namespace RigFEM
 
 		bool			stepRig(int curFrame);
 		bool			staticStepRig(int curFrame, const EigVec& curParam);
+		bool			stepAndSaveEleGFRig(int curFrame, const EigVec& curParam);
 
 		bool			setStaticSolveMaxIter(int maxIter);
 		bool			setDeriStepSize(double step);
 		bool			showStatus( int curFrame, double* bbox = NULL);
 		bool			saveResult(const char* fileName);
+		bool			saveGFResult(const char* fileName);
 
 		bool			setControlType(RigControlType type);
 	protected:

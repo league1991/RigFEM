@@ -12,13 +12,33 @@ enum RigControlType
 	CONTROL_EXPLICIT_FORCE	= (0x1) << 1,		// 在每一帧求解的过程中用相同的控制力
 	CONTROL_IMPLICIT_FORCE	= (0x1) << 2		// 在每一帧求解的过程中用可变的控制力
 };
+enum AxisType
+{
+	AXIS_X = 0,
+	AXIS_Y = 1,
+	AXIS_Z = 2
+};
 struct MeshDispConfig
 {
 	MeshDispConfig();
 	void setDefault();
 
+	static void beginColorMaterial();
+	static void endColorMaterial();
+
 	double m_extForceDispFactor;
-	double m_ctrlForceDispFactor;
+
+	bool   m_showEdge;
+	bool   m_showPoint;
+	bool   m_showBBox;
+	bool   m_showMaterial;
+
+	double m_minMaterialFactor;
+	double m_maxMaterialFactor;
+	AxisType m_axis;
+	double m_axisFactor;
+
+	static unsigned char  s_colorRuler[];
 };
 class RiggedMesh :public ObjectFunction
 {
@@ -44,6 +64,14 @@ public:
 	// 给定参数以确定表面点位置，计算内部点受力平衡的位置
 	// initN可以指定初始迭代位置
 	bool computeStaticPos(const EigVec& p, double t, EigVec& q, int maxIter = 20, const EigVec* initQ = NULL);
+
+	// 计算 A = [T*f1, T*f2, ..., T*fn]
+	// 其中 T 是参数指定的降维矩阵， 尺寸为低维数x有限元网格自由度数
+	// f1 ... fn 是各个有限元四面体对内力的贡献
+	// 参数q是各个点的位置
+	void computeReducedForceMatrix(	const EigVec& q, const EigDense& T, EigDense& A);
+	bool loadElementMaterialFactor(EigVec& factor);
+	bool clearElementMaterialFactor();
 
 	// 各种状态变量
 	// 获得当前各个自由度的状态
@@ -82,6 +110,7 @@ public:
 	int getNTotPnt()const{return m_nTotPnt;}
 	int getNSurfPnt()const{return m_nSurfPnt;}
 	int getNIntPnt()const{return m_nIntPnt;}
+	int getNParam()const{return m_rigObj->getNFreeParam();}
 
 	// 各种测试函数，调试专用
 	// 给定当前的配置n,p,检查Hessian是否正确逼近

@@ -103,6 +103,7 @@ namespace RigFEM
 		const RigStatus& getFinalStatus()const{return m_finalStatus;}
 		virtual bool step()=0;
 		virtual bool staticSolve(const EigVec& curParam){return false;}
+		virtual bool staticSolveWithEleGF(const EigVec& curParam){return false;}
 
 		void setIterationMaxStepSize(double maxStep);
 		
@@ -116,6 +117,11 @@ namespace RigFEM
 		void setStaticSolveMaxIter(int maxIter);
 
 		bool getRestStatus( RigStatus& status );
+
+		// 额外传递的状态记录名
+		static const char*  const	s_dPName;					// 参数前后帧的值增量
+		static const char*	const	s_initStepName;				// 迭代初始步长
+		static const char*	const	s_reducedElementGF;			// 每个元素对参数空间产生的广义力
 	protected:
 		// 获得当前帧的目标控制参数和目标控制参数的速度
 		bool getCurCtrlParam(EigVec& tarParam, EigVec& tarParamVelocity);
@@ -143,10 +149,6 @@ namespace RigFEM
 
 		int			m_maxStaticSolveIter;
 
-		// 额外传递的状态记录名
-		static const char*		s_dPName;					// 参数前后帧的值增量
-		static const char*		s_initStepName;				// 迭代初始步长
-
 	};
 	class PointParamSolver:public NewtonSolver
 	{
@@ -158,12 +160,19 @@ namespace RigFEM
 		// 计算函数
 		bool step();
 		bool staticSolve(const EigVec& curParam);
+		// 静态求解,并算出各个有限元的广义力记录下来
+		bool staticSolveWithEleGF(const EigVec& curParam);
 
 		void clearResult(){m_paramResult.clear();}
 		void saveResult(const char* fileName, const char* paramName = "param");
 
 		virtual void setControlType(RigControlType type);
 	private:
+		// 给定参数值，利用力平衡条件计算出内部点位置，
+		// 参数值发生变化时，把表面点，内部点都看成参数的函数
+		// 计算出这个向量值函数的雅可比矩阵
+		bool computeStaticJacobian(const EigVec& curParam, EigDense& J);
+
 		RiggedMesh*		m_fem;
 		LineSearcher	m_lineSearch;
 
@@ -182,6 +191,7 @@ namespace RigFEM
 		ParamSolver(RiggedSkinMesh* fem = NULL, HessianType type = HESSIAN_CONST_JACOBIAN);
 
 		bool step();
+		bool staticSolveWithEleGF(const EigVec& curParam);
 
 		virtual void setControlType(RigControlType type);
 	private:

@@ -299,10 +299,31 @@ void RigFEM::Utilities::double2EigenDiag( const double* m, int n, EigSparse& dia
 	diag.setFromTriplets(triList.begin(), triList.end());
 }
 
+bool RigFEM::Utilities::eigDense2Vec( const EigDense& denseMat, EigVec& vec )
+{
+	int length = denseMat.rows() * denseMat.cols();
+	vec.resize(length);
+	const double* p = denseMat.data();
+	for (int i = 0; i < length; ++i)
+	{
+		vec[i] = p[i];
+	}
+	return true;
+}
+
 
 void RigFEM::MathUtilities::clampVector( EigVec& v, double maxElement )
 {
 	double maxAbsVal = v.cwiseAbs().maxCoeff();
 	if (maxAbsVal > maxElement)
 		v *= (maxElement / maxAbsVal);
+}
+
+Vec3d RigFEM::MathUtilities::computeNormal( const Vec3d& v0, const Vec3d& v1, const Vec3d& v2 )
+{
+	Vec3d d1 = v1 - v0;
+	Vec3d d2 = v2 - v0;
+	Vec3d nor = cross(d1, d2);
+	nor.normalize();
+	return nor;
 }

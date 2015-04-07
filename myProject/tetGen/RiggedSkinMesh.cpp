@@ -1,6 +1,8 @@
 #include "stdafx.h"
 
 using namespace RigFEM;
+const char* RigFEM::RiggedSkinMesh::s_weightName = "weight";
+
 void RigFEM::RiggedSkinMesh::setWeight( EigSparse& sparse )
 {
 	m_weightMat = sparse;
@@ -11,11 +13,11 @@ bool RigFEM::RiggedSkinMesh::setWeight( const char* weightFile )
 {
 	std::map<string, EigDense> matMap;
 	Utilities::fileToDense(weightFile, matMap);
-	if (matMap.find("weight") == matMap.end())
+	if (matMap.find(s_weightName) == matMap.end())
 		return false;
 
 	EigSparse weightMat;
-	Utilities::eigDense2Sparse(matMap["weight"], weightMat);
+	Utilities::eigDense2Sparse(matMap[s_weightName], weightMat);
 	if (weightMat.rows() == m_intDofIdx.size() &&
 		weightMat.cols() == m_surfDofIdx.size())
 	{
@@ -403,5 +405,41 @@ bool RigFEM::RiggedSkinMesh::computeApproxHessian( const EigVec&x, const EigVec&
 	}
 	return true;
 }
+
+bool RigFEM::RiggedSkinMesh::computeOffsetAndJacobian( const EigVec& p, EigVec* pQ, EigDense* pJ /*= NULL*/ )
+{
+	if (pQ == NULL)
+		return false;
+
+	EigVec& q = *pQ;
+	q.resize(m_nTotPnt*3);
+	computeSkinQ(&p[0], m_t, &q[0]);
+
+	if(pJ)
+	{
+		EigDense J;
+		m_rigObj->computeJacobian(J);
+
+		EigDense WJ = m_weightMat * J;
+
+		EigDense& jacobian = *pJ;
+		jacobian.resize(m_nTotPnt*3, m_nParam);
+		for (int ithParam = 0; ithParam < m_nParam; ++ithParam)
+		{
+			for (int i = 0; i < m_intDofIdx.size(); ++i)
+			{
+				int idx = m_intDofIdx[i];
+				jacobian(idx, ithParam) = WJ(i, ithParam);
+			}
+			for (int i = 0; i < m_surfDofIdx.size(); ++i)
+			{
+				int idx = m_surfDofIdx[i];
+				jacobian(idx, ithParam) = J(i, ithParam);
+			}
+		}
+	}
+	return true;
+}
+
 
 

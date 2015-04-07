@@ -31,6 +31,7 @@ namespace RigFEM
 
 		// 设置有限差商求导时的步长
 		void setDelta(double delta){m_delta = delta;}
+		double getDelta(){return m_delta;}
 
 		// 以下是各个计算函数, 根据当前的参数和时间计算各种结果
 		// 计算当前参数下点的新坐标

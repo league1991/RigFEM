@@ -21,6 +21,7 @@ namespace RigFEM
 		// 计算近似的Hessian矩阵
 		// 假定雅可比矩阵为常数
 		bool computeApproxHessian(const EigVec&x, const EigVec& param, EigDense& H);
+		bool computeOffsetAndJacobian(const EigVec& p, EigVec* pQ, EigDense* pJ = NULL);
 
 		bool testCurFrameGrad(RigStatus& lastFrame, RigStatus& curFrame, double noiseP = 1.0);
 		bool testCurFrameHessian( RigStatus& lastFrame, RigStatus& curFrame, double noiseP=1.0);
@@ -29,5 +30,7 @@ namespace RigFEM
 
 		EigSparse				m_weightMat;				// 权重矩阵，大小为（内部点数*3, 表面点数*3）
 		EigSparse				m_weightMatTran;			// 权重矩阵的转置
+
+		static const char*		s_weightName;
 	};
 }

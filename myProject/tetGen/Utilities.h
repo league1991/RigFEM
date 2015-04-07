@@ -1,7 +1,13 @@
 #pragma once
 
+#ifndef MAX
 #define MAX(a,b) ((a)>(b)?(a):(b))
+#endif
+
+#ifndef MIN
 #define MIN(a,b) ((a)<(b)?(a):(b))
+#endif
+
 #define CLAMP_INT(minValue,maxValue,value) (MAX(int(minValue),MIN(int(value),int(maxValue))))
 #define CLAMP_FLOAT(minValue,maxValue,value) (MAX(float(minValue),MIN(float(value),float(maxValue))))
 #define CLAMP_DOUBLE(minValue,maxValue,value) (MAX(double(minValue),MIN(double(value),double(maxValue))))
@@ -63,6 +69,8 @@ public:
 	static bool fileToDense(const char* fileName, std::map<std::string, EigDense>& denseMap);
 	static bool eigDense2Sparse(const EigDense& denseMat, EigSparse& sparseMat);
 	static bool kronecker3X( EigSparse& src, EigSparse& dst );
+	static bool eigDense2Vec(const EigDense& denseMat, EigVec& vec);
+
 	
 	// vector functions
 	template<class VectorType>
@@ -240,6 +248,8 @@ public:
 
 	// 把向量缩放，使其元素最大绝对值不超过maxElement
 	static void clampVector( EigVec& v, double maxElement );
+
+	static Vec3d computeNormal(const Vec3d& v0, const Vec3d& v1, const Vec3d& v2);
 
 	static void testMath();
 };

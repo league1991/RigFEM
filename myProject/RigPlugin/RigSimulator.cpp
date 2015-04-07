@@ -3,6 +3,8 @@
 
 using namespace RigFEM;
 
+const char* RigFEM::SimulatorBase::s_materialName = "material";
+
 
 RigSimulator::~RigSimulator(void)
 {
@@ -205,6 +207,38 @@ bool RigFEM::RigSimulator::setControlType( RigControlType type )
 	return true;
 }
 
+bool RigFEM::RigSimulator::stepAndSaveEleGFRig( int curFrame, const EigVec& curParam )
+{
+	if (!m_rig || !m_rigMesh || !m_solver || !m_recorder)
+		return false;
+	if (curParam.size() != m_recorder->getParamVecLength())
+		return false;
+	m_solver->setCurrentFrame(curFrame);
+
+	// 获得上一帧状态
+	return m_solver->staticSolveWithEleGF(curParam);
+}
+
+bool RigFEM::RigSimulator::saveGFResult( const char* fileName )
+{
+	if (!isReady())
+		return false;
+
+	ofstream file(fileName);
+	if (!file)
+		return false;
+
+	m_recorder->addCustomToFile(m_solver->s_reducedElementGF, file);
+
+	char buf[50];
+	int nParam = m_rigMesh->getNParam();
+	sprintf(buf, "nParam = %d;\n", nParam);
+	file << buf;
+	file.close();
+
+	return true;
+}
+
 void RigFEM::RigSkinSimulator::allocateSimObj()
 {
 	RiggedSkinMesh* skinMesh = new RiggedSkinMesh();
@@ -278,4 +312,32 @@ bool RigFEM::RigSkinSimulator::init( tetgenio& surfMesh, RigSimulationNode* node
 void RigFEM::SimulatorBase::setExternalForceDispFactor( double factor )
 {
 	m_dispConfig.m_extForceDispFactor = factor;
+}
+
+bool RigFEM::SimulatorBase::loadElementMaterialFactor( const char* fileName )
+{
+	if (!isReady())
+	{
+		return false;
+	}
+	std::map<string, EigDense> matMap;
+	Utilities::fileToDense(fileName, matMap);
+	if (matMap.find(s_materialName) == matMap.end())
+		return false;
+
+	EigDense& mat = matMap[s_materialName];
+	EigVec vec;
+	Utilities::eigDense2Vec(mat, vec);
+	m_rigMesh->loadElementMaterialFactor(vec);
+	return true;
+}
+
+bool RigFEM::SimulatorBase::resetElementMaterialFactor()
+{
+	if (!isReady())
+	{
+		return false;
+	}
+	m_rigMesh->clearElementMaterialFactor();
+	return true;
 }

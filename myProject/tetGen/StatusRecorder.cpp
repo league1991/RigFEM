@@ -90,6 +90,17 @@ bool RigFEM::RigStatus::getCustom( const string& name, EigVec& v ) const
 	return true;
 }
 
+bool RigFEM::RigStatus::getCustom( const string& name, EigDense& v ) const
+{
+	map<string, EigDense>::const_iterator p = m_customDenseMat.find(name);
+	if (p == m_customDenseMat.end())
+	{
+		return false;
+	}
+	v = p->second;
+	return true;
+}
+
 void RigFEM::RigStatus::addOrSetCustom( const string& name, double v )
 {
 	m_customScalar[name] = v;
@@ -98,6 +109,11 @@ void RigFEM::RigStatus::addOrSetCustom( const string& name, double v )
 void RigFEM::RigStatus::addOrSetCustom( const string& name, const EigVec& v )
 {
 	m_customVector[name] = v;
+}
+
+void RigFEM::RigStatus::addOrSetCustom( const string& name, const EigDense& v )
+{
+	m_customDenseMat[name] = v;
 }
 
 void RigFEM::RigStatus::mergeCustom( const RigStatus& s )
@@ -111,6 +127,11 @@ void RigFEM::RigStatus::mergeCustom( const RigStatus& s )
 		it != s.m_customVector.end(); ++it)
 	{
 		m_customVector[it->first] = it->second;
+	}
+	for (map<string, EigDense>::const_iterator it = s.m_customDenseMat.begin();
+		it != s.m_customDenseMat.end(); ++it)
+	{
+		m_customDenseMat[it->first] = it->second;
 	}
 }
 
@@ -244,4 +265,62 @@ void RigFEM::StatusRecorder::setPntIdx( const vector<int>& intPntIdx, const vect
 	{
 		m_surfPntIdx[i]++;
 	}
+}
+
+void RigFEM::StatusRecorder::customMat2Str( const char* stateName, const char* matlabVarName, string& str )const
+{
+	str = "";
+	str += matlabVarName;
+	str += "=[\n";
+	for (int ithFrame = 0; ithFrame < m_statusList.size(); ++ithFrame)
+	{
+		const RigStatus& status = m_statusList[ithFrame];
+		EigDense m;
+		if (status.getCustom(stateName, m))
+		{
+			char numberBuf[100];
+			for (int i = 0; i < m.rows(); ++i)
+			{
+				for (int j = 0; j < m.cols(); ++j)
+				{
+					double val = m(i,j);
+					sprintf_s(numberBuf, 100, "%lf ", val);
+					str += numberBuf;
+				}
+				str += "\n";
+			}
+		}
+	}
+	str += "\n];\n";
+}
+
+bool RigFEM::StatusRecorder::saveCustomToFile( const char* customParamName, const char* fileName ) const
+{
+	ofstream file(fileName);
+	if (!file)
+	{
+		return false;
+	}
+
+	string buffer;
+	buffer = "% custom records\n";
+
+	file << buffer;
+	customMat2Str(customParamName, customParamName, buffer);
+	file << buffer;
+
+	file.close();
+	return true;
+}
+
+bool RigFEM::StatusRecorder::addCustomToFile( const char* customParamName, ofstream& file ) const
+{
+	string buffer;
+	buffer = "% custom records\n";
+
+	file << buffer;
+	customMat2Str(customParamName, customParamName, buffer);
+	file << buffer;
+
+	return true;
 }

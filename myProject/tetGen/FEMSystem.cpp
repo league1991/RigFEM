@@ -3,6 +3,110 @@
 
 using namespace RigFEM;
 
+unsigned char MeshDispConfig::s_colorRuler[] = 
+{
+	0,   64,  143,
+	2,   66,  144,
+	6,   68,  145,
+	9,   71,  147,
+	13,   74,  149,
+	17,   77,  151,
+	20,   80,  154,
+	25,   83,  156,
+	29,   88,  158,
+	33,   92,  162,
+	39,   95,  164,
+	44,   99,  167,
+	50,  104,  171,
+	55,  108,  173,
+	60,  113,  177,
+	66,  118,  180,
+	72,  123,  183,
+	77,  128,  187,
+	83,  133,  191,
+	90,  137,  194,
+	96,  143,  197,
+	102,  148,  201,
+	109,  153,  204,
+	115,  159,  208,
+	121,  163,  211,
+	128,  169,  215,
+	134,  173,  219,
+	140,  179,  222,
+	147,  184,  225,
+	153,  189,  228,
+	159,  194,  231,
+	165,  198,  234,
+	172,  204,  237,
+	178,  208,  240,
+	183,  212,  242,
+	189,  216,  245,
+	195,  221,  247,
+	201,  225,  249,
+	205,  228,  252,
+	211,  232,  253,
+	216,  235,  254,
+	221,  239,  255,
+	225,  241,  255,
+	230,  244,  255,
+	235,  246,  255,
+	238,  249,  255,
+	243,  251,  255,
+	246,  252,  255,
+	249,  253,  255,
+	253,  255,  255,
+	255,  255,  255,
+	255,  255,  253,
+	255,  255,  251,
+	255,  255,  249,
+	255,  255,  246,
+	255,  253,  243,
+	255,  252,  240,
+	255,  251,  236,
+	255,  249,  232,
+	255,  247,  228,
+	255,  245,  224,
+	255,  243,  219,
+	255,  240,  213,
+	255,  238,  208,
+	255,  234,  203,
+	255,  231,  198,
+	255,  228,  191,
+	255,  224,  185,
+	255,  221,  180,
+	255,  218,  174,
+	255,  213,  167,
+	255,  209,  160,
+	255,  206,  154,
+	255,  202,  148,
+	255,  197,  141,
+	255,  194,  135,
+	255,  189,  128,
+	255,  185,  122,
+	255,  181,  115,
+	255,  177,  108,
+	255,  173,  101,
+	255,  168,   94,
+	255,  164,   89,
+	255,  160,   82,
+	255,  155,   75,
+	255,  152,   69,
+	255,  148,   63,
+	255,  144,   57,
+	255,  141,   52,
+	255,  137,   46,
+	255,  133,   40,
+	255,  130,   36,
+	255,  127,   30,
+	255,  124,   26,
+	255,  121,   21,
+	255,  118,   17,
+	255,  116,   13,
+	255,  114,   10,
+	255,  111,   6,
+	255,  110,   3
+};
+
 RiggedMesh::RiggedMesh(void):
 m_tetMesh(NULL),  m_forceModel(NULL), 
 m_h(0.03), m_t(0), m_tangentStiffnessMatrix(NULL),  
@@ -1054,7 +1158,7 @@ bool RiggedMesh::setStatus( const RigStatus& s )
 	return false;
 }
 
-bool RiggedMesh::showStatus( RigStatus& s, const MeshDispConfig& config , double* bbox)
+bool RiggedMesh::showStatus( RigStatus& s, const MeshDispConfig& config , double* boundingbox)
 {
 	if (!s.matchLength(m_nTotPnt*3, m_nParam))
 		return false;
@@ -1067,42 +1171,54 @@ bool RiggedMesh::showStatus( RigStatus& s, const MeshDispConfig& config , double
 	glPointSize(3.f);
 	glBegin(GL_POINTS);
 	glColor3f(0,0,1);
-	for (int i = 0; i < m_intPntIdx.size(); ++i)
+	if (config.m_showPoint)
 	{
-		int idx = m_intPntIdx[i];
-		Vec3d v = *m_tetMesh->getVertex(idx);
-		Vec3d dV(q[idx*3], q[idx*3+1], q[idx*3+2]);
-		v += dV;
-		glVertex3d(v[0], v[1], v[2]);
-	}
+		for (int i = 0; i < m_intPntIdx.size(); ++i)
+		{
+			int idx = m_intPntIdx[i];
+			Vec3d v = *m_tetMesh->getVertex(idx);
+			Vec3d dV(q[idx*3], q[idx*3+1], q[idx*3+2]);
+			v += dV;
+			glVertex3d(v[0], v[1], v[2]);
+		}
 
-	if (bbox)
-	{
-		bbox[0] = bbox[1] = bbox[2] = DBL_MAX;
-		bbox[3] = bbox[4] = bbox[5] = -DBL_MAX;
+		glColor3f(0,1,0);
+		for (int i = 0; i < m_surfPntIdx.size(); ++i)
+		{
+			int idx = m_surfPntIdx[i];
+			Vec3d v = *m_tetMesh->getVertex(idx);
+			Vec3d dV(q[idx*3], q[idx*3+1], q[idx*3+2]);
+			v += dV;
+			glVertex3d(v[0], v[1], v[2]);
+		}
 	}
-	glColor3f(0,1,0);
+	glEnd();
+
+	// 计算包围盒
+	double bbox[6];
+	bbox[0] = bbox[1] = bbox[2] = DBL_MAX;
+	bbox[3] = bbox[4] = bbox[5] = -DBL_MAX;
 	for (int i = 0; i < m_surfPntIdx.size(); ++i)
 	{
 		int idx = m_surfPntIdx[i];
 		Vec3d v = *m_tetMesh->getVertex(idx);
 		Vec3d dV(q[idx*3], q[idx*3+1], q[idx*3+2]);
 		v += dV;
-		glVertex3d(v[0], v[1], v[2]);
-		if (bbox)
+		for (int j = 0; j < 3; ++j)
 		{
-			for (int j = 0; j < 3; ++j)
-			{
-				bbox[j] = min(bbox[j], v[j]);
-				bbox[j+3]=max(bbox[j], v[j]);
-			}
+			bbox[j] = min(bbox[j], v[j]);
+			bbox[j+3]=max(bbox[j+3], v[j]);
 		}
 	}
-	glEnd();
+	if (boundingbox)
+	{
+		for(int i = 0; i < 6; ++i)
+			boundingbox[i] = bbox[i];
+	}
 
 	// 画力
 	double extForceFactor = config.m_extForceDispFactor;
-	if (extForceFactor >= 0)
+	if (extForceFactor > 0)
 	{
 		glColor3f(1,1,0);
 		glBegin(GL_LINES);
@@ -1123,26 +1239,112 @@ bool RiggedMesh::showStatus( RigStatus& s, const MeshDispConfig& config , double
 	}
 
 	// 画边
-	glColor3f(0.5, 0.5,0.5);
-	glBegin(GL_LINES);
-	for(int ithTet = 0; ithTet < m_tetMesh->getNumElements(); ++ithTet)
+	if (config.m_showEdge)
 	{
-		Vec3d  pnt[4];
-		for (int i = 0; i < 4; ++i)
+		glColor3f(0.5, 0.5,0.5);
+		glBegin(GL_LINES);
+		for(int ithTet = 0; ithTet < m_tetMesh->getNumElements(); ++ithTet)
 		{
-			pnt[i] = *m_tetMesh->getVertex(ithTet, i);
-			int idx = m_tetMesh->getVertexIndex(ithTet, i);
-			pnt[i] += Vec3d(q[idx*3],q[idx*3+1],q[idx*3+2]);
+			Vec3d  pnt[4];
+			for (int i = 0; i < 4; ++i)
+			{
+				pnt[i] = *m_tetMesh->getVertex(ithTet, i);
+				int idx = m_tetMesh->getVertexIndex(ithTet, i);
+				pnt[i] += Vec3d(q[idx*3],q[idx*3+1],q[idx*3+2]);
+			}
+			int edge[6][2] = {{0,1},{0,2},{0,3},{1,2},{2,3},{3,1}};
+			for (int e = 0; e < 6; ++e)
+			{
+				glVertex3dv(&(pnt[edge[e][0]])[0]);
+				glVertex3dv(&(pnt[edge[e][1]])[0]);
+			}
 		}
-
-		int edge[6][2] = {{0,1},{0,2},{0,3},{1,2},{2,3},{3,1}};
-		for (int e = 0; e < 6; ++e)
-		{
-			glVertex3dv(&(pnt[edge[e][0]])[0]);
-			glVertex3dv(&(pnt[edge[e][1]])[0]);
-		}
+		glEnd();
 	}
-	glEnd();
+
+	// 画面
+	if (config.m_showMaterial)
+	{
+		int axis = config.m_axis;
+		double minPlane = bbox[axis] - 0.01;
+		double maxPlane = bbox[axis+3] + 0.01;
+		double threshold = minPlane + (maxPlane - minPlane) * config.m_axisFactor;
+
+		config.beginColorMaterial();
+		glBegin(GL_TRIANGLES);
+		for(int ithTet = 0; ithTet < m_tetMesh->getNumElements(); ++ithTet)
+		{
+			Vec3d  pnt[4];
+			for (int i = 0; i < 4; ++i)
+			{
+				pnt[i] = *m_tetMesh->getVertex(ithTet, i);
+				int idx = m_tetMesh->getVertexIndex(ithTet, i);
+				pnt[i] += Vec3d(q[idx*3],q[idx*3+1],q[idx*3+2]);
+			}
+
+			int face[4][3] = {{0,1,3},{1,2,3},{0,2,3},{0,2,1}};
+			if (pnt[0][axis] <= threshold ||
+				pnt[1][axis] <= threshold ||
+				pnt[2][axis] <= threshold ||
+				pnt[3][axis] <= threshold)
+			{
+				double factor = m_modelwrapper->getElementMaterialFactor(ithTet);
+				double norFactor = 
+					(factor - config.m_minMaterialFactor) / 
+					(config.m_maxMaterialFactor - config.m_minMaterialFactor);
+
+				int nColor = 100;
+				int idx = CLAMP_INT(0,nColor-1, int(norFactor * (nColor-1)));
+
+				unsigned char* color = &config.s_colorRuler[idx*3];
+				glColor3ubv(color);
+				for (int f = 0; f < 4; ++f)
+				{
+					Vec3d normal = MathUtilities::computeNormal(pnt[face[f][0]],pnt[face[f][1]],pnt[face[f][2]]);
+					glNormal3dv(&normal[0]);
+					glVertex3dv(&(pnt[face[f][0]])[0]);
+					glNormal3dv(&normal[0]);
+					glVertex3dv(&(pnt[face[f][1]])[0]);
+					glNormal3dv(&normal[0]);
+					glVertex3dv(&(pnt[face[f][2]])[0]);
+				}
+			}
+		}
+		glEnd();
+		config.endColorMaterial();
+	}
+
+	if (config.m_showBBox)
+	{
+		int pntIdx[][3] = {
+			{0,1,2},{3,1,2},{3,4,2},{0,4,2},
+			{0,1,5},{3,1,5},{3,4,5},{0,4,5}
+		};
+		
+		int edgeIdx[][2] = {
+			{0,1},{1,2},{2,3},{3,0},
+			{0,4},{1,5},{2,6},{3,7},
+			{4,5},{5,6},{6,7},{7,4}
+		};
+		glColor3f(0.8,0.8,0.8);
+		glBegin(GL_LINES);
+		for(int e = 0; e < 12; ++e)
+		{
+			int i0 = edgeIdx[e][0];
+			int i1 = edgeIdx[e][1];
+
+			int* p0i = pntIdx[i0];
+			int* p1i = pntIdx[i1];
+
+			double p0[] = {bbox[p0i[0]], bbox[p0i[1]], bbox[p0i[2]]};
+			double p1[] = {bbox[p1i[0]], bbox[p1i[1]], bbox[p1i[2]]};
+
+			glVertex3dv(p0);
+			glVertex3dv(p1);
+		}
+		glEnd();
+
+	}
 
 	glPopAttrib();
 	return true;
@@ -1474,6 +1676,22 @@ bool RigFEM::RiggedMesh::getControlTargetFromRigNode( EigVec& target )
 	return m_rigObj->getControlTarget(target);
 }
 
+void RigFEM::RiggedMesh::computeReducedForceMatrix( const EigVec& q, const EigDense& T, EigDense& A )
+{
+	m_modelwrapper->computeReducedForceMatrix(q.data(), T, A);
+}
+
+bool RigFEM::RiggedMesh::loadElementMaterialFactor( EigVec& factor )
+{
+	return m_modelwrapper->setElementMaterialFactor(factor);
+}
+
+bool RigFEM::RiggedMesh::clearElementMaterialFactor()
+{
+	m_modelwrapper->clearElementMaterialFactor();
+	return true;
+}
+
 
 void RigFEM::FEMSystem::init()
 {
@@ -1484,10 +1702,36 @@ void RigFEM::FEMSystem::init()
 void RigFEM::MeshDispConfig::setDefault()
 {
 	m_extForceDispFactor = 0;
-	m_ctrlForceDispFactor= 0;
+	
+	m_showEdge = true;
+	m_showPoint = true;
+	m_showBBox = true;
+	m_showMaterial = false;
+
+	m_minMaterialFactor = 0;
+	m_maxMaterialFactor = 2;
+	m_axis = AXIS_X;
+	m_axisFactor = 1;
 }
 
 RigFEM::MeshDispConfig::MeshDispConfig()
 {
 	setDefault();
+}
+
+void RigFEM::MeshDispConfig::endColorMaterial()
+{
+	glPopAttrib();
+}
+
+void RigFEM::MeshDispConfig::beginColorMaterial()
+{
+	float zeros[] = {0,0,0,0};
+
+	glPushAttrib(GL_ENABLE_BIT | GL_LIGHTING_BIT);
+
+ 	glEnable(GL_LIGHTING); // 使用灯光
+
+	glEnable(GL_COLOR_MATERIAL);
+	glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);  
 }

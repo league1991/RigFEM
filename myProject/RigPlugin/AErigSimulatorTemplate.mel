@@ -69,7 +69,11 @@ global proc initSimulator(string $nodeName)
 	
 	// reset particle shape
 	string $ptcl      = `getAttr ($nodeName + ".collisionParticle")`;
-	string $ptclShape = getFirstShape($ptcl);
+	string $ptclShape = "";
+	if(`size($ptcl)` != 0)
+	{
+		$ptclShape = getFirstShape($ptcl);
+	}
 	string $mesh      = `getAttr ($nodeName + ".collisionMesh")`;
 	int    $nPnt      = `rigSimulate -numSurfacePnt -name $nodeName`;
 	float $pnt[3] = {0,0,0};
@@ -94,12 +98,14 @@ global proc initSimulator(string $nodeName)
 		currentTime $frame;
 		saveInitialState $ptclShape;
 	}
+	refresh -f;
 }
 // type: simulation type 
 // 0		dynamic simulation
 // 1		static simulation
+// 2		static simulation with general force
 global proc execSimulator(string $nodeName, int $type)
-{	
+{
 	int  $length = `intSliderGrp   -query -value simLengthSlider`;
 	
 	// init progress bar
@@ -130,6 +136,8 @@ global proc execSimulator(string $nodeName, int $type)
 		case 1:
 			$res = `rigSimulate -stepStatic -name $nodeName`;
 			break;
+		case 2:
+			$res = `rigSimulate -stepEleGF -name $nodeName`;
 		}
 		if($res == 0)
 			break;
@@ -208,12 +216,12 @@ global proc initTestGH(string $attrName)
 		floatSliderGrp 	-label "Internal Point Increment" -field true
 					    -minValue 0.0 -maxValue 1
 					    -fieldMinValue 0 -fieldMaxValue 1.7e308
-					    -value 1  dNSlider;
+					    -value 0.1  dNSlider;
 								
 		floatSliderGrp 	-label "Parameter Increment" -field true
 					    -minValue 0.0 -maxValue 1
 					    -fieldMinValue 0 -fieldMaxValue 1.7e308
-					    -value 1  dPSlider;
+					    -value 0.1  dPSlider;
 						
 		button -label "Test Gradient" -c ("testGradient " + $nodeName) testGradientButton;
 		button -label "Test Hessian"  -c ("testGradient " + $nodeName) testHessianButton;		
@@ -227,6 +235,34 @@ global proc modifyTestGH(string $attrName)
 	button -e -c ("testHessian "  + $nodeName) testHessianButton;
 }
 
+// Adaptive Material
+global proc saveGeneralForceData(string $nodeName)
+{
+	string $filePath = `getAttr ($nodeName+".generalForceResultPath")`;
+	int $res = `rigSimulate -name $nodeName -saveGF $filePath`;
+}
+
+global proc initAdaptiveMaterial(string $attrName)
+{
+	string $nodeName = `plugNode $attrName`;	
+	setUITemplate -pst "attributeEditorTemplate";		
+		button -label "Simulate And Record General Force" -c ("execSimulator " + $nodeName + " 2") simWithGFButton;
+		button -label "Save General Force Data" -c ("saveGeneralForceData " + $nodeName) saveGFButton;
+		button -label "Load Element Material" -c ("rigSimulate -name " + $nodeName + " -loadEleMat") loadMatButton;
+		button -label "Reset Element Material" -c ("rigSimulate -name " + $nodeName + " -resetEleMat") resetMatButton;
+	setUITemplate -ppt;
+}
+
+global proc modifyAdaptiveMaterial(string $attrName)
+{
+	string $nodeName = `plugNode $attrName`;
+	button -e -c ("execSimulator " + $nodeName + " 2") simWithGFButton;
+	button -e -c ("saveGeneralForceData " + $nodeName) saveGFButton;
+	button -e -c ("rigSimulate -name " + $nodeName + " -loadEleMat") loadMatButton;
+	button -e -c ("rigSimulate -name " + $nodeName + " -resetEleMat") resetMatButton;
+}
+
+
 // main
 global proc AErigSimulatorTemplate(string $nodeName)
 {
@@ -236,10 +272,16 @@ global proc AErigSimulatorTemplate(string $nodeName)
 			editorTemplate -addControl "tetMaxVolume";
 			editorTemplate -addSeparator;
 			editorTemplate -addControl "time";
-			editorTemplate -addControl "displayFemMesh";
-			editorTemplate -label "Display Data Source" -addControl "displayType";
-			editorTemplate -label "Ext. Force Display Length" -addControl "fieldForceShowLength";
+			editorTemplate -label "Param. From" -addControl "displayType";
 			editorTemplate -addControl "meshTransform";
+		editorTemplate -endLayout;
+		
+		editorTemplate -beginLayout "Display" -collapse false;
+			editorTemplate -addControl "displayFemMesh";
+			editorTemplate -addControl "displayVertex";
+			editorTemplate -addControl "displayEdge";
+			editorTemplate -addControl "displayBoundingBox";
+			editorTemplate -label "Ext. Force Display Length" -addControl "fieldForceShowLength";
 		editorTemplate -endLayout;
 		
 		editorTemplate -beginLayout "Material" -collapse false;
@@ -258,25 +300,36 @@ global proc AErigSimulatorTemplate(string $nodeName)
 			editorTemplate -label "inverse CG. Step Tolerance" -addControl "inverseStepToleranceOfCG";
 			editorTemplate -label "max Newton Iteration" -addControl "maxIteration";
 			editorTemplate -label "max CG. Iteration" -addControl "maxIterationOfCG";			
-			editorTemplate -addControl "maxParamStepPerIter.";
-			
-			editorTemplate -beginLayout "Test Solver" -collapse true;
-			editorTemplate -callCustom "initTestGH" "modifyTestGH" "noAttr";	
-			editorTemplate -endLayout;
-			
+			editorTemplate -addControl "maxParamStepEachIteration";
+						
 			editorTemplate -addSeparator;
 			editorTemplate -addControl "savePath";
 			editorTemplate -addControl "simulationType";
 			editorTemplate -addControl "weightPath";
 			editorTemplate -addControl "resultPath";
 			editorTemplate -callCustom "initSimulatorControl" "modifySimulatorControl" "noAttr";	
+			
+			editorTemplate -beginLayout "Solve Adaptive Material" -collapse true;
+				editorTemplate -addControl "generalForceResultPath";
+				editorTemplate -addControl "materialPath";
+				editorTemplate -addControl "displayMaterial";
+				editorTemplate -addControl "minColorFactor";
+				editorTemplate -addControl "maxColorFactor";
+				editorTemplate -addControl "cutAxis";
+				editorTemplate -addControl "cutPlaneRatio";
+				editorTemplate -callCustom "initAdaptiveMaterial" "modifyAdaptiveMaterial" "noAttr";
+			editorTemplate -endLayout;
+			
+			editorTemplate -beginLayout "Test Solver" -collapse true;
+				editorTemplate -callCustom "initTestGH" "modifyTestGH" "noAttr";	
+			editorTemplate -endLayout;
 		editorTemplate -endLayout;
 		
 		editorTemplate -beginLayout "Rig Parameter" -collapse true;
 			editorTemplate -addControl "rigInitParameter";
 			editorTemplate -addControl "inputForce";
 		editorTemplate -endLayout;
-			
+					
 		editorTemplate -beginLayout "Collision" -collapse true;
 			editorTemplate -label "Proxy NParticle Name" -addControl "collisionParticle";
 			editorTemplate -label "Mesh Name"            -addControl "collisionMesh";

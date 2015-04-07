@@ -45,8 +45,11 @@ namespace RigFEM
 		// 自定义属性
 		void addOrSetCustom(const string& name, double v);
 		void addOrSetCustom(const string& name, const EigVec& v);
+		void addOrSetCustom(const string& name, const EigDense& v);
 		bool getCustom(const string& name, double& v)const;
 		bool getCustom(const string& name, EigVec& v)const;
+		bool getCustom(const string& name, EigDense& v)const;
+
 		void mergeCustom(const RigStatus& s);
 
 	private:
@@ -55,6 +58,7 @@ namespace RigFEM
 		EigVec	m_targetParam;
 		map<string, double> m_customScalar;			// 一些自定义参数
 		map<string, EigVec> m_customVector;
+		map<string, EigDense>m_customDenseMat;
 	};
 	class StatusRecorder
 	{
@@ -75,9 +79,12 @@ namespace RigFEM
 		int  getParamVecLength()const{return m_paramLength;}
 
 		bool saveToFile(const char* fileName)const;
+		bool saveCustomToFile(const char* customParamName, const char* fileName)const;
+		bool addCustomToFile( const char* customParamName, ofstream& file ) const;
 	private:
 		void state2Str(RigStatus::Status s, const char* name, string& str)const;
-		
+		void customMat2Str(const char* stateName, const char* matlabVarName, string& str)const;
+
 		int				  m_pntLength;
 		int				  m_paramLength;
 		int				  m_startFrame;

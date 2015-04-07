@@ -25,7 +25,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;"
+				CommandLine="copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;&#x0D;&#x0A;"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -106,7 +106,7 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				CommandLine="copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;"
+				CommandLine="copy AErigSimulatorTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AErigSimulatorTemplate.mel&quot;&#x0D;&#x0A;copy AEcageDeformerTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEcageDeformerTemplate.mel&quot;&#x0D;&#x0A;copy AEdataSwitchTemplate.mel &quot;D:\Program Files (x86)\Autodesk\Maya2013\scripts\AETemplates\AEdataSwitchTemplate.mel&quot;&#x0D;&#x0A;"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"

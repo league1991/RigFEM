@@ -103,6 +103,7 @@
 #include "centraldifferencessparse.h"
 #include "neoHookeanIsotropicMaterial.h"
 #include "isotropicHyperelasticFEMForceModel.h"
+#include "matrixMultiplyMacros.h"
 
 // Eigen
 #include "Eigen/sparse"

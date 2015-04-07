@@ -3,8 +3,9 @@
 #include "RiggedSkinMesh.h"
 using namespace RigFEM;
 
-const char* RigFEM::NewtonSolver::s_initStepName = "initStep";
-const char* RigFEM::NewtonSolver::s_dPName = "Pi-Pi-1";
+const char*const RigFEM::NewtonSolver::s_initStepName = "initStep";
+const char*const RigFEM::NewtonSolver::s_dPName = "deltaPi";
+const char*const RigFEM::NewtonSolver::s_reducedElementGF = "reducedElementGF";
 
 LineSearcher::~LineSearcher(void)
 {
@@ -463,7 +464,8 @@ bool RigFEM::PointParamSolver::step()
 	m_paramResult.push_back(totParam);
 	m_finalStatus = m_fem->getStatus();
 	m_finalStatus.mergeCustom(resultStatus);
-	m_finalStatus.addOrSetCustom(s_dPName, m_finalStatus.getP() - m_initStatus.getP());
+	EigVec deltaP = m_finalStatus.getP() - m_initStatus.getP();
+	m_finalStatus.addOrSetCustom(s_dPName, deltaP);
 
 	// 输出状态
 	PRINT_F("time: %.2lf", t);
@@ -595,7 +597,7 @@ void RigFEM::PointParamSolver::setControlType( RigControlType type )
 bool RigFEM::PointParamSolver::staticSolve( const EigVec& curParam )
 {
 	RigStatus s;
-	bool res = m_recorder.getStatus(m_curFrame-1, s);
+	bool res = m_recorder.getStatus(m_curFrame, s);
 	if (!res)
 		res =getRestStatus(s);
 	if (!res)
@@ -623,8 +625,102 @@ bool RigFEM::PointParamSolver::staticSolve( const EigVec& curParam )
 	{
 		tp.setZero(curParam.size());
 	}
-	return m_recorder.setStatus(m_curFrame, RigStatus(q,v,a,p,pv,f, tp));
+	return m_recorder.setStatus(m_curFrame+1, RigStatus(q,v,a,p,pv,f, tp));
 	return true;
+}
+
+bool RigFEM::PointParamSolver::computeStaticJacobian( const EigVec& curParam, EigDense& J )
+{
+	if (!m_fem || !m_fem->getRigObj())
+		return false;
+	RigStatus s;
+	bool res = m_recorder.getStatus(m_curFrame, s);
+	if (!res)
+		res =getRestStatus(s);
+	if (!res)
+		return false;
+
+	EigVec initQ = s.getQ();		// 以上一帧的位置开始迭代，加快速度
+
+	int nDof = m_fem->getNTotPnt()*3;
+	int nParam = curParam.size();
+	J.resize(nDof, nParam);
+	EigVec p0 = curParam, p1 = curParam;
+	EigVec q0, q1;
+	double dp = m_fem->getRigObj()->getDelta();	// 有限差商步长
+	for (int ithParam = 0; ithParam < curParam.size(); ++ithParam)
+	{
+		p0[ithParam] = curParam[ithParam] - dp;
+		p1[ithParam] = curParam[ithParam] + dp;
+
+		// 求解平衡位置
+		EigVec tarParam, tarParamVelocity;
+		getCurCtrlParam(tarParam, tarParamVelocity);
+		m_fem->setControlTarget(tarParam, tarParamVelocity);
+		m_fem->updateExternalAndControlForce();
+
+		if(!m_fem->computeStaticPos(p0, 0, q0, m_maxStaticSolveIter, &initQ))
+			return false;
+		initQ = q0;																// 把结果作为下次计算初始条件，加快迭代
+		if(!m_fem->computeStaticPos(p1, 0, q1, m_maxStaticSolveIter, &initQ))
+			return false;
+
+		EigVec dqdpi = (q1 - q0) / (2 * dp);
+		for (int ithDof = 0; ithDof < nDof; ++ithDof)
+		{
+			J(ithDof, ithParam) = dqdpi[ithDof];
+		}
+
+		// 恢复参数值
+		p0[ithParam] = curParam[ithParam];
+		p1[ithParam] = curParam[ithParam];
+	}
+	return true;
+}
+
+bool RigFEM::PointParamSolver::staticSolveWithEleGF( const EigVec& curParam )
+{
+	RigStatus s;
+	bool res = m_recorder.getStatus(m_curFrame, s);
+	if (!res)
+		res =getRestStatus(s);
+	if (!res)
+		return false;
+	m_initStatus = s;
+
+	// 求解平衡位置
+	EigVec p = curParam;
+	EigVec q;
+	const EigVec* initQ = &s.getQ();		// 以上一帧的位置开始迭代，加快速度
+	EigVec tarParam, tarParamVelocity;
+	getCurCtrlParam(tarParam, tarParamVelocity);
+	m_fem->setControlTarget(tarParam, tarParamVelocity);
+	m_fem->updateExternalAndControlForce();
+	if(!m_fem->computeStaticPos(p, 0, q, m_maxStaticSolveIter, initQ))
+		return false;
+
+	// 计算每个元素的广义力
+	EigDense J;
+	if (!computeStaticJacobian(p, J))
+		return false;
+	EigDense JT = J.transpose();
+	EigDense A;
+	m_fem->computeReducedForceMatrix(q, JT, A);
+
+	// 记录结果
+	double dt = m_fem->getStepTime();
+	EigVec v = (q - s.getQ()) / dt;
+	EigVec a = (v - s.getV()) / dt;
+	EigVec pv= (p - s.getP()) / dt;
+	const EigVec& f = m_fem->getExternalForce();
+	EigVec tp;
+	if (!m_fem->getControlTargetFromRigNode(tp))
+	{
+		tp.setZero(curParam.size());
+	}
+	m_finalStatus = RigStatus(q,v,a,p,pv,f, tp);
+	m_finalStatus.addOrSetCustom(s_reducedElementGF, A);
+	return m_recorder.setStatus(m_curFrame+1, m_finalStatus);
 }
 
 bool RigFEM::SimpleFunction::computeValueAndGrad( const EigVec& x, double* v /*= NULL*/, EigVec* grad /*= NULL*/ )
@@ -846,7 +942,8 @@ bool RigFEM::ParamSolver::step()
 	m_paramResult.push_back(P);
 	m_finalStatus = m_fem->getStatus();
 	m_finalStatus.mergeCustom(resultStatus);
-	m_finalStatus.addOrSetCustom(s_dPName, m_finalStatus.getP() - m_initStatus.getP());
+	EigVec deltaP = m_finalStatus.getP() - m_initStatus.getP();
+	m_finalStatus.addOrSetCustom(s_dPName, deltaP);
 
 	// 输出状态
 	PRINT_F("time: %.2lf", t);
@@ -867,5 +964,51 @@ void RigFEM::ParamSolver::setControlType( RigControlType type )
 {
 	m_controlType = type;
 	m_fem->setRigControlType(type);
+}
+
+bool RigFEM::ParamSolver::staticSolveWithEleGF( const EigVec& curParam )
+{
+	RigStatus s;
+	bool res = m_recorder.getStatus(m_curFrame, s);
+	if (!res)
+		res =getRestStatus(s);
+	if (!res)
+		return false;
+	m_initStatus = s;
+
+	// 求解平衡位置
+	EigVec p = curParam;
+	const EigVec* initQ = &s.getQ();		// 以上一帧的位置开始迭代，加快速度
+	EigVec tarParam, tarParamVelocity;
+	getCurCtrlParam(tarParam, tarParamVelocity);
+	m_fem->setControlTarget(tarParam, tarParamVelocity);
+	m_fem->updateExternalAndControlForce();
+
+	EigVec q;
+	EigDense J;
+	if (!m_fem->computeOffsetAndJacobian(p, &q, &J))
+	{
+		return false;
+	}
+
+	// 计算每个元素的广义力
+	EigDense JT = J.transpose();
+	EigDense A;
+	m_fem->computeReducedForceMatrix(q, JT, A);
+
+	// 记录结果
+	double dt = m_fem->getStepTime();
+	EigVec v = (q - s.getQ()) / dt;
+	EigVec a = (v - s.getV()) / dt;
+	EigVec pv= (p - s.getP()) / dt;
+	const EigVec& f = m_fem->getExternalForce();
+	EigVec tp;
+	if (!m_fem->getControlTargetFromRigNode(tp))
+	{
+		tp.setZero(curParam.size());
+	}
+	m_finalStatus = RigStatus(q,v,a,p,pv,f, tp);
+	m_finalStatus.addOrSetCustom(s_reducedElementGF, A);
+	return m_recorder.setStatus(m_curFrame+1, m_finalStatus);
 }
 
