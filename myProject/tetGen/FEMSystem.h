@@ -69,9 +69,11 @@ public:
 	// 其中 T 是参数指定的降维矩阵， 尺寸为低维数x有限元网格自由度数
 	// f1 ... fn 是各个有限元四面体对内力的贡献
 	// 参数q是各个点的位置
+	typedef vector<int> NeighIdx;
 	void computeReducedForceMatrix(	const EigVec& q, const EigDense& T, EigDense& A);
 	bool loadElementMaterialFactor(EigVec& factor);
 	bool clearElementMaterialFactor();
+	const vector<NeighIdx>& getElementAdjList()const{return m_eleAdjList;}
 
 	// 各种状态变量
 	// 获得当前各个自由度的状态
@@ -104,8 +106,8 @@ public:
 	RigStatus getStatus()const;
 	bool setStatus(const RigStatus& s);
 
-	const vector<int>& getInternalPntIdx()const{return m_intPntIdx;}
-	const vector<int>& getSurfacePntIdx()const{return m_surfPntIdx;}
+	const vector<int> getInternalPntIdx()const;
+	const vector<int> getSurfacePntIdx()const;
 	void getMeshPntPos(vector<double>& pnts)const;
 	int getNTotPnt()const{return m_nTotPnt;}
 	int getNSurfPnt()const{return m_nSurfPnt;}
@@ -135,8 +137,18 @@ protected:
 		bool  operator<(const PntPair& other)const;
 	};
 
+	struct OrderedPair
+	{
+		int   m_k1, m_k2, m_k3;
+		OrderedPair(int k1, int k2, int k3):m_k1(k1), m_k2(k2), m_k3(k3){}
+		bool  operator<(const OrderedPair& o)const;
+	};
+
 	bool findOriPoints(tetgenio& in, tetgenio& out);
 	bool buildVegaData(double E = 1e6, double nu = 0.45, double density = 1000);
+	bool allocateTempData();
+	bool freeTempData();
+
 	// 由内部点偏移n和参数p更新所有点的偏移q
 	bool computeQ(const double* n, const double* p, double t, double* q);
 	// 只更新被参数p影响的点的位置
@@ -154,18 +166,24 @@ protected:
 	// 计算施加到每个节点的控制力（参数数个分量），
 	// 此函数用于隐式控制,其以当前的参数值为上一帧的参数值，以此计算参数速度
 	bool computeControlForce( EigVec& generalForce, const EigVec& param );
+	bool computeControlEnergy(const EigVec& param, double& energy);
+
+	// 材料硬度拟合
+	bool computeElementLaplacian(vector<NeighIdx>& adjList);
 
 	// Tengen生成的四面体网格数据,这些数据一旦生成，在模拟过程中除坐标值外不再修改
 	tetgenio		m_out;
-	vector<int>		m_surfPntIdx;						// 来自m_in的顶点（视为表面点）在m_out的索引
-	vector<int>		m_intPntIdx;						// 新加入的顶点(视为内部点)在m_out的索引
-	vector<int>		m_surfDofIdx;						// 表面点各个自由度（xyzxyzxyz）索引
-	vector<int>		m_intDofIdx;						// 内部点各个自由度（xyzxyzxyz）索引
+	int*			m_surfPntIdx;						// 来自m_in的顶点（视为表面点）在m_out的索引
+	int*			m_intPntIdx;						// 新加入的顶点(视为内部点)在m_out的索引
+	int*			m_surfDofIdx;						// 表面点各个自由度（xyzxyzxyz）索引
+	int*			m_intDofIdx;						// 内部点各个自由度（xyzxyzxyz）索引
 	int				m_nTotPnt;							// 总点数
 	int				m_nIntPnt;							// 内部点（也就是自由运动的点）个数
 	int				m_nSurfPnt;							// 表面点（也就是被参数控制的点）个数
+	int				m_nIntDof, m_nSurfDof;				// 自由度数
 	int				m_nParam;							// 自由参数个数
 	TetMesh*		m_tetMesh;							// 四面体网格
+	vector<NeighIdx>m_eleAdjList;						// 四面体网格中，四面体元素的拉普拉斯矩阵
 
 	// 各种Vega数据结构
 	ModelWrapper*			m_modelwrapper;
@@ -181,11 +199,15 @@ protected:
 	EigVec					m_extForce;					// 受的外力
 	EigVec					m_param;					// 所有rig 参数排成的向量
 	EigVec					m_paramVelocity;			// 所有rig 参数速度
-	SparseMatrix*			m_tangentStiffnessMatrix;
 
 	EigVec					m_mass;						// 质量
 	double					m_h;						// 时间步长
 	double					m_t;						// 当前时刻
+
+	// 以下变量不属于状态变量，仅仅是为了避免反复分配空间而引入的临时变量
+	SparseMatrix*			m_tangentStiffnessMatrix;	// 切向刚度矩阵
+	EigSparse				m_dFss, m_dFsn, m_dFns, m_dFnn;// 切向刚度矩阵各个分块
+	EigVec					m_intDofBuf, m_surfDofBuf, m_totDofBuf;	// 内部点自由度，表面点自由度，总自由度
 
 	// 控制参数
 	RigControlType			m_controlType;				// 是否引入控制力

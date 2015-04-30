@@ -24,8 +24,12 @@ public:
 	// 把vega矩阵转成Eigen矩阵
 	static void vegaSparse2Eigen(const SparseMatrix& src, EigSparse& tar, int nCols = -1);	
 	// 把vega矩阵的某个子矩阵转成Eigen矩阵，rowID，colID指定选中的行和列
-	static void vegaSparse2Eigen( const SparseMatrix& src, const std::vector<int>& rowID, const std::vector<int>& colID, EigSparse& tar);
+	static void vegaSparse2Eigen( const SparseMatrix& src, const int* rowID, const int* colID, int nRows, int nCols, EigSparse& tar);
+	// 此函数把vega函数转成eigen的稀疏矩阵数据，eigen稀疏矩阵预先已被分配空间，非零元分布与vega稀疏矩阵一样
+	// 要求tar矩阵是rowMajor的
+	static void vegaSparse2AllocatedEigen( const SparseMatrix& src, const int* rowID, const int* colID,	int nRows, int nCols, EigSparse& tar);
 	static void double2EigenDiag(const double* m, int n, EigSparse& diag);
+
 	template<class MatrixType>
 	static double maxError(const MatrixType& m0, const MatrixType& m1)
 	{

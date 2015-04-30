@@ -18,13 +18,13 @@ bool RigFEM::RiggedSkinMesh::setWeight( const char* weightFile )
 
 	EigSparse weightMat;
 	Utilities::eigDense2Sparse(matMap[s_weightName], weightMat);
-	if (weightMat.rows() == m_intDofIdx.size() &&
-		weightMat.cols() == m_surfDofIdx.size())
+	if (weightMat.rows() == m_nIntDof &&
+		weightMat.cols() == m_nSurfDof)
 	{
 		m_weightMat = weightMat;
 	}
-	else if (weightMat.rows() * 3 == m_intDofIdx.size() &&
-		weightMat.cols() * 3 == m_surfDofIdx.size())
+	else if (weightMat.rows() * 3 == m_nIntDof &&
+		weightMat.cols() * 3 == m_nSurfDof)
 	{
 		Utilities::kronecker3X(weightMat, m_weightMat);
 	}
@@ -186,16 +186,25 @@ bool RigFEM::RiggedSkinMesh::computeHessian( const EigVec&x, const EigVec& param
 	// 提取 dFn/dn dFn/ds dFs/dn dFs/ds,
 	// 其中Fn为内部节点受到的力，Fs为表面节点受到的力
 	// n为内部节点位置，s为表面节点位置
-	EigSparse dFss, dFsn, dFns, dFnn;
-	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_surfDofIdx, dFss);
-	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_intDofIdx,  dFsn);
-	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_surfDofIdx, dFns);
-	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_intDofIdx,  dFnn);
+// 	EigSparse dFss, dFsn, dFns, dFnn;
+// 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_surfDofIdx, dFss);
+// 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_intDofIdx,  dFsn);
+// 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_surfDofIdx, dFns);
+// 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_intDofIdx,  dFnn);
+	EigSparse& dFss = m_dFss;
+	EigSparse& dFsn = m_dFsn;
+	EigSparse& dFns = m_dFns;
+	EigSparse& dFnn = m_dFnn;
+	Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_surfDofIdx, m_nSurfDof, m_nSurfDof, dFss);
+	Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_intDofIdx,  m_nSurfDof, m_nIntDof,  dFsn);
+	Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_surfDofIdx, m_nIntDof,  m_nSurfDof, dFns);
+	Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_intDofIdx,  m_nIntDof,  m_nIntDof,  dFnn);
+
 
 	// 计算 db/dp 
 	// 大小为(表面点数*3，参数数)
 	double h2 = m_h * m_h;
-	for (int i = 0; i < m_surfPntIdx.size(); ++i)
+	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		int idx = m_surfPntIdx[i];
 		double m = m_mass[idx] / h2;
@@ -204,7 +213,7 @@ bool RigFEM::RiggedSkinMesh::computeHessian( const EigVec&x, const EigVec& param
 		dFss.coeffRef(i3,i3) += m;	++i3;
 		dFss.coeffRef(i3,i3) += m;
 	}
-	for (int i = 0; i < m_intPntIdx.size(); ++i)
+	for (int i = 0; i < m_nIntPnt; ++i)
 	{
 		int idx = m_intPntIdx[i];
 		double m = m_mass[idx] / h2;
@@ -359,16 +368,24 @@ bool RigFEM::RiggedSkinMesh::computeApproxHessian( const EigVec&x, const EigVec&
 	// 提取 dFn/dn dFn/ds dFs/dn dFs/ds,
 	// 其中Fn为内部节点受到的力，Fs为表面节点受到的力
 	// n为内部节点位置，s为表面节点位置
-	EigSparse dFss, dFsn, dFns, dFnn;
-	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_surfDofIdx, dFss);
-	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_intDofIdx,  dFsn);
-	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_surfDofIdx, dFns);
-	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_intDofIdx,  dFnn);
+// 	EigSparse dFss, dFsn, dFns, dFnn;
+// 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_surfDofIdx, dFss);
+// 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_intDofIdx,  dFsn);
+// 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_surfDofIdx, dFns);
+// 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_intDofIdx,  dFnn);
+	EigSparse& dFss = m_dFss;
+	EigSparse& dFsn = m_dFsn;
+	EigSparse& dFns = m_dFns;
+	EigSparse& dFnn = m_dFnn;
+	Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_surfDofIdx, m_nSurfDof, m_nSurfDof, dFss);
+	Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_intDofIdx,  m_nSurfDof, m_nIntDof,  dFsn);
+	Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_surfDofIdx, m_nIntDof,  m_nSurfDof, dFns);
+	Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_intDofIdx,  m_nIntDof,  m_nIntDof,  dFnn);
 
 	// 计算 db/dp 
 	// 大小为(表面点数*3，参数数)
 	double h2 = m_h * m_h;
-	for (int i = 0; i < m_surfPntIdx.size(); ++i)
+	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		int idx = m_surfPntIdx[i];
 		double m = m_mass[idx] / h2;
@@ -377,7 +394,7 @@ bool RigFEM::RiggedSkinMesh::computeApproxHessian( const EigVec&x, const EigVec&
 		dFss.coeffRef(i3,i3) += m;	++i3;
 		dFss.coeffRef(i3,i3) += m;
 	}
-	for (int i = 0; i < m_intPntIdx.size(); ++i)
+	for (int i = 0; i < m_nIntPnt ; ++i)
 	{
 		int idx = m_intPntIdx[i];
 		double m = m_mass[idx] / h2;
@@ -426,12 +443,12 @@ bool RigFEM::RiggedSkinMesh::computeOffsetAndJacobian( const EigVec& p, EigVec* 
 		jacobian.resize(m_nTotPnt*3, m_nParam);
 		for (int ithParam = 0; ithParam < m_nParam; ++ithParam)
 		{
-			for (int i = 0; i < m_intDofIdx.size(); ++i)
+			for (int i = 0; i < m_nIntDof; ++i)
 			{
 				int idx = m_intDofIdx[i];
 				jacobian(idx, ithParam) = WJ(i, ithParam);
 			}
-			for (int i = 0; i < m_surfDofIdx.size(); ++i)
+			for (int i = 0; i < m_nSurfDof; ++i)
 			{
 				int idx = m_surfDofIdx[i];
 				jacobian(idx, ithParam) = J(i, ithParam);

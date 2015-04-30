@@ -1,6 +1,10 @@
 #pragma once
 #include "StatusRecorder.h"
 
+// 定义不同的共轭梯度算法
+#define FR_CG		0			// fletcher-reeves  法
+#define PR_CG		1			// polak-ribiere	法
+#define CG_METHOD	FR_CG
 namespace RigFEM
 {
 	// 进行一维搜索的函数对象
@@ -121,7 +125,7 @@ namespace RigFEM
 		// 额外传递的状态记录名
 		static const char*  const	s_dPName;					// 参数前后帧的值增量
 		static const char*	const	s_initStepName;				// 迭代初始步长
-		static const char*	const	s_reducedElementGF;			// 每个元素对参数空间产生的广义力
+		static const char*	const	s_reducedElementGFName;			// 每个元素对参数空间产生的广义力
 	protected:
 		// 获得当前帧的目标控制参数和目标控制参数的速度
 		bool getCurCtrlParam(EigVec& tarParam, EigVec& tarParamVelocity);

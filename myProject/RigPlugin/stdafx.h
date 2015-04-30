@@ -111,7 +111,13 @@
 #include "Eigen/QR"
 #include "Eigen/SuperLUSupport"
 
-typedef Eigen::SparseMatrix<double> EigSparse;
+#define ROW_MAJOR
+#ifdef ROW_MAJOR
+typedef Eigen::SparseMatrix<double, Eigen::RowMajor> EigSparse;
+#else
+typedef Eigen::SparseMatrix<double, Eigen::ColMajor> EigSparse;
+#endif
+
 typedef Eigen::MatrixXd				EigDense;
 typedef Eigen::VectorXd				EigVec;
 
@@ -139,3 +145,7 @@ typedef Eigen::VectorXd				EigVec;
 #include "MeshCorrespondence.h"
 #include "MeshControlCmd.h"
 #include "DataSwitch.h"
+
+#ifdef EIGEN_VECTORIZE
+#pragma message("Using Eigen SSE version")
+#endif

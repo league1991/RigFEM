@@ -111,8 +111,9 @@ RiggedMesh::RiggedMesh(void):
 m_tetMesh(NULL),  m_forceModel(NULL), 
 m_h(0.03), m_t(0), m_tangentStiffnessMatrix(NULL),  
 m_modelwrapper(NULL), 
-m_nTotPnt(0), m_nIntPnt(0), m_nSurfPnt(0), m_nParam(0),
-m_rigObj(NULL), m_controlType(CONTROL_NONE)
+m_nTotPnt(0), m_nIntPnt(0), m_nSurfPnt(0), m_nIntDof(0), m_nSurfDof(0), m_nParam(0),
+m_rigObj(NULL), m_controlType(CONTROL_NONE),
+m_surfPntIdx(NULL), m_intPntIdx(NULL), m_surfDofIdx(NULL), m_intDofIdx(NULL)
 {
 }
 
@@ -322,24 +323,34 @@ bool RiggedMesh::findOriPoints(tetgenio& in, tetgenio& out)
 	}
 
 	p = out.pointlist;
+	vector<int> surfPntIdx, intPntIdx;
 	for (int i = 0; i < out.numberofpoints; ++i, p+=3)
 	{ 
 		PntPair pair = {Vec3d (p[0], p[1], p[2]), i};
 		std::set<PntPair>::iterator pPair = pntSet.find(pair);
 		if (pPair != pntSet.end())
 		{
-			m_surfPntIdx.push_back(i);
+			surfPntIdx.push_back(i);
 			pntSet.erase(pPair);
 		}
 		else
-			m_intPntIdx.push_back(i);
+			intPntIdx.push_back(i);
 	}
-	m_nIntPnt = m_intPntIdx.size();
-	m_nSurfPnt = m_surfPntIdx.size();
+
+	m_nIntPnt = intPntIdx.size();
+	m_nSurfPnt = surfPntIdx.size();
+	m_nIntDof = m_nIntPnt*3;
+	m_nSurfDof= m_nSurfPnt*3;
 	m_nTotPnt = out.numberofpoints;
 
-	m_intDofIdx.resize(m_nIntPnt * 3);
-	m_surfDofIdx.resize(m_nSurfPnt * 3);
+	m_surfPntIdx = new int[m_nSurfPnt];
+	m_intPntIdx  = new int[m_nIntPnt];
+	m_surfDofIdx = new int[m_nSurfDof];
+	m_intDofIdx  = new int[m_nIntDof];
+
+	std::copy(surfPntIdx.begin(), surfPntIdx.end(), m_surfPntIdx);
+	std::copy(intPntIdx.begin(), intPntIdx.end(), m_intPntIdx);
+
 	for (int i = 0; i < m_nIntPnt; ++i)
 	{
 		m_intDofIdx[i*3]   = 3 * m_intPntIdx[i];
@@ -407,8 +418,13 @@ bool RiggedMesh::buildVegaData(double E, double nu, double density)
 	m_q = m_v = m_a = m_force = m_extForce = EigVec::Constant(nPnts*3, 0.0);
 	m_mass = EigVec(nPnts);
 	GenerateMassMatrix::computeVertexMasses(m_tetMesh, &m_mass[0]);
-	if (!m_tangentStiffnessMatrix)
-		m_forceModel->GetTangentStiffnessMatrixTopology(&m_tangentStiffnessMatrix);
+
+
+	if (m_tangentStiffnessMatrix)
+		delete m_tangentStiffnessMatrix;
+	allocateTempData();
+
+	computeElementLaplacian(m_eleAdjList);
 	return true;
 }
 
@@ -443,8 +459,6 @@ bool RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigS
 	// 提取内力、tangent Stiffness matrix、质量矩阵
 	// 注意tangent stiffness matrix为实际的负值，因为系统计算出的弹力为实际的负值,因此需要先反转
 	EigVec force(m_nTotPnt*3);
-	if(!m_tangentStiffnessMatrix)
-		m_forceModel->GetTangentStiffnessMatrixTopology(&m_tangentStiffnessMatrix);
 	m_forceModel->GetForceAndMatrix(&q[0], &force[0], m_tangentStiffnessMatrix);
 	*m_tangentStiffnessMatrix *= -1;
 	force *= -1;
@@ -454,8 +468,10 @@ bool RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigS
 	// n为内部节点位置，s为表面节点位置
 
 	// 构建矩阵Hnn = Mn / h^2 - dFn/dn
-	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx, m_intDofIdx, Hnn);
-	Hnn *= -1.0;
+// 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx, m_intDofIdx, m_nIntDof, m_nIntDof, Hnn);
+// 	Hnn *= -1.0;
+	Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_intDofIdx, m_intDofIdx, m_nIntDof, m_nIntDof, m_dFnn);
+	Hnn  = -m_dFnn;
 	for (int ithInt = 0; ithInt < m_nIntPnt; ++ithInt)
 	{
 		int begIdx = ithInt*3;
@@ -469,13 +485,17 @@ bool RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigS
 	EigDense J;
 	res &= m_rigObj->computeJacobian(J);
 	EigSparse dFns;
-	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx, m_surfDofIdx, dFns);
-	Hnp = -1.f * dFns * J;
+// 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx, m_surfDofIdx, m_nIntDof, m_nSurfDof, dFns);
+// 	Hnp = -1.f * dFns * J;
+	Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_intDofIdx, m_surfDofIdx, m_nIntDof, m_nSurfDof, m_dFns);
+	Hnp = -1.f * m_dFns * J;
 
 	// 构建矩阵Hpn = - J' * dFs/dn
 	EigSparse dFsn;
-	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_intDofIdx, dFsn);
-	Hpn = - J.transpose() * dFsn;
+// 	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_intDofIdx, m_nSurfDof, m_nIntDof,dFsn);
+// 	Hpn = - J.transpose() * dFsn;
+	Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_intDofIdx, m_nSurfDof, m_nIntDof, m_dFsn);
+	Hpn = -J.transpose() * m_dFsn;
 
 	// 构建矩阵Hpp,此矩阵计算量最大
 	if (pHpp)
@@ -497,8 +517,10 @@ bool RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigS
 		}
 		EigDense& Hpp = *pHpp;
 		Hpp = EigDense::Zero(m_nParam, m_nParam);
-		EigSparse dFss;
-		Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_surfDofIdx, dFss);
+// 		EigSparse dFss;
+// 		Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_surfDofIdx, m_nSurfDof, m_nSurfDof,dFss);
+		Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_surfDofIdx, m_nSurfDof, m_nSurfDof,m_dFss);
+		EigSparse& dFss = m_dFss;
 		for (int i = 0; i < m_nParam; ++i)
 		{
 			for (int l = 0; l < m_nParam; ++l)
@@ -511,10 +533,19 @@ bool RiggedMesh::computeHessian(const EigVec& n, const EigVec& p, double t, EigS
 
 					double mass = m_mass[m_surfPntIdx[k/3]];
 					double v = 0;
+#ifdef ROW_MAJOR
+					EigSparse::InnerIterator it(dFss, k);
+					for (; it; ++it)  
+					{
+						int m = it.col();
+						v += it.value() * J(m,l);
+					}
+#else
 					for (int m = 0; m < m_nSurfPnt*3; ++m)
 					{
 						v += dFss.coeff(k,m) * J(m,l);
 					}
+#endif
 					Hppil += J(k,i) *(mass * J(k,l) * invH2 - v);
 				}
 			}
@@ -568,7 +599,7 @@ void RiggedMesh::testStep( double dt )
 
 bool RiggedMesh::computeQ( const double* n, const double* p, double t, double* q )
 {
-	EigVec s;
+	EigVec& s = m_surfDofBuf;
 	bool res = computeSurfOffset(p, t, s);
 	if (!res)
 		return res;
@@ -591,7 +622,7 @@ bool RiggedMesh::computeQ( const double* n, const double* p, double t, double* q
 
 bool RiggedMesh::computeQ( const double* p, double t, double* q )
 {
-	EigVec s;
+	EigVec& s = m_surfDofBuf;
 	bool res = computeSurfOffset(p, t, s);
 	if (!res)
 		return res;
@@ -607,17 +638,18 @@ bool RiggedMesh::computeQ( const double* p, double t, double* q )
 
 bool RiggedMesh::computeSurfOffset( const double* p, double t, EigVec& s )
 {
-	s = EigVec(m_nSurfPnt*3);
+	s.resize(m_nSurfPnt*3);
 	m_rigObj->setTime(t);
 	bool res = m_rigObj->computeValue(&s[0], p);
 	if (!res)
 		return res;
+	double *ps = &s[0];
 	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		int idx3 = m_surfPntIdx[i] * 3;
-		s[i*3]   -= m_out.pointlist[idx3++];
-		s[i*3+1] -= m_out.pointlist[idx3++];
-		s[i*3+2] -= m_out.pointlist[idx3];
+		ps[i*3]   -= m_out.pointlist[idx3++];
+		ps[i*3+1] -= m_out.pointlist[idx3++];
+		ps[i*3+2] -= m_out.pointlist[idx3];
 	}
 	return true;
 }
@@ -830,9 +862,9 @@ double RiggedMesh::computeValue( const EigVec& q, const EigVec& p )
 	}
 	else if (m_controlType == CONTROL_IMPLICIT_FORCE)
 	{
-		computeControlForce(m_controlForce, p);
-		double ctrlEnergy     = m_controlForce.dot(m_param);
-		totEnergy -= ctrlEnergy;
+		double energy = 0;
+		if(computeControlEnergy(p, energy))
+			totEnergy += energy;
 	}
 	return totEnergy;
 }
@@ -1104,11 +1136,18 @@ void RiggedMesh::clear()
 
 	m_out.deinitialize();
 	m_out.initialize();
-	m_surfPntIdx.clear();
-	m_intPntIdx.clear();
+	delete[] m_surfPntIdx;
+	delete[] m_intPntIdx;
+	delete[] m_surfDofIdx;
+	delete[] m_intDofIdx;
+	m_surfPntIdx = m_intPntIdx = m_surfDofIdx = m_intDofIdx = NULL;
+
+
 	m_nTotPnt = 0;
 	m_nIntPnt = 0;
 	m_nSurfPnt = 0;
+	m_nIntDof = 0;
+	m_nSurfDof = 0;
 	m_nParam = 0;
 
 	delete m_forceModel;
@@ -1121,12 +1160,11 @@ void RiggedMesh::clear()
 	m_tetMesh = NULL;
 
 	m_q = m_v = m_a = m_force = m_param = EigVec();
-	delete m_tangentStiffnessMatrix;
-	m_tangentStiffnessMatrix = NULL;
 
 	m_mass = EigVec();
 	m_t = 0;
 
+	freeTempData();
 }
 
 RigStatus RiggedMesh::getStatus() const
@@ -1173,7 +1211,7 @@ bool RiggedMesh::showStatus( RigStatus& s, const MeshDispConfig& config , double
 	glColor3f(0,0,1);
 	if (config.m_showPoint)
 	{
-		for (int i = 0; i < m_intPntIdx.size(); ++i)
+		for (int i = 0; i < m_nIntPnt; ++i)
 		{
 			int idx = m_intPntIdx[i];
 			Vec3d v = *m_tetMesh->getVertex(idx);
@@ -1183,7 +1221,7 @@ bool RiggedMesh::showStatus( RigStatus& s, const MeshDispConfig& config , double
 		}
 
 		glColor3f(0,1,0);
-		for (int i = 0; i < m_surfPntIdx.size(); ++i)
+		for (int i = 0; i < m_nSurfPnt; ++i)
 		{
 			int idx = m_surfPntIdx[i];
 			Vec3d v = *m_tetMesh->getVertex(idx);
@@ -1198,7 +1236,7 @@ bool RiggedMesh::showStatus( RigStatus& s, const MeshDispConfig& config , double
 	double bbox[6];
 	bbox[0] = bbox[1] = bbox[2] = DBL_MAX;
 	bbox[3] = bbox[4] = bbox[5] = -DBL_MAX;
-	for (int i = 0; i < m_surfPntIdx.size(); ++i)
+	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		int idx = m_surfPntIdx[i];
 		Vec3d v = *m_tetMesh->getVertex(idx);
@@ -1416,7 +1454,7 @@ bool RiggedMesh::testCurFrameHessian( RigStatus& lastFrame, RigStatus& curFrame,
 
 		double invE = 1.0 / (step * step);
 		PRINT_F("ε=%le  maxResN=%le  maxResP=%le  |maxN|/ε^2=%le  |maxP|/ε^2=%le",
-			step, resNMax, resPMax, resNMax * invE, resPMax* invE);
+			step, resNMax, resPMax, resNNorm * invE, resPNorm* invE);
 	}
 	return true;
 }
@@ -1482,27 +1520,19 @@ bool RigFEM::RiggedMesh::computeStaticPos( const EigVec& p, double t, EigVec& q,
 		return false;
 
 	PRINT_F("compute static position");
-	if(!m_tangentStiffnessMatrix)
-		m_forceModel->GetTangentStiffnessMatrixTopology(&m_tangentStiffnessMatrix);
 
 	EigVec force(m_nTotPnt*3);
 	q = initQ ? *initQ : EigVec::Zero(m_nTotPnt*3);
 	computeQ(&p[0], t, &q[0]);
 
-	vector<int> nIdx(m_nIntPnt * 3);
-	for (int i = 0; i < m_nIntPnt; ++i)
-	{
-		nIdx[i*3]   = 3 * m_intPntIdx[i];
-		nIdx[i*3+1] = 3 * m_intPntIdx[i] + 1;
-		nIdx[i*3+2] = 3 * m_intPntIdx[i] + 2;
-	}
-
 	for (int iter = 0; iter < maxIter; ++iter)
 	{
 		// 计算受力和切向刚度矩阵
 		m_forceModel->GetForceAndMatrix(&q[0], &force[0], m_tangentStiffnessMatrix);
-		EigSparse tangentStiffnessMat;
-		Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, nIdx, nIdx, tangentStiffnessMat);
+		//EigSparse tangentStiffnessMat;
+		//Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx, m_intDofIdx, m_nIntDof, m_nIntDof, tangentStiffnessMat);
+		EigSparse& tangentStiffnessMat = m_dFnn;
+		Utilities::vegaSparse2AllocatedEigen(*m_tangentStiffnessMatrix, m_intDofIdx, m_intDofIdx, m_nIntDof, m_nIntDof, tangentStiffnessMat);
 
 		// 求解新位置
 		EigVec intForce(3 * m_nIntPnt);
@@ -1523,7 +1553,7 @@ bool RigFEM::RiggedMesh::computeStaticPos( const EigVec& p, double t, EigVec& q,
 		EigVec dN = solver.solve(intForce);
 
 		double intPntLengthSq = 0;				// 内部点向量长度平方
-		for (int ithN = 0; ithN < m_intPntIdx.size(); ++ithN)
+		for (int ithN = 0; ithN < m_nIntPnt; ++ithN)
 		{
 			int intIdx = m_intPntIdx[ithN];
 			double* pDq = &dN[ithN*3];
@@ -1568,7 +1598,7 @@ void RigFEM::RiggedMesh::getVertexPosition( EigVec& pos )
 {
 	pos = m_q;
 
-	for (int i = 0; i < m_intPntIdx.size(); ++i)
+	for (int i = 0; i < m_nIntPnt; ++i)
 	{
 		int idx = m_intPntIdx[i];
 		int idx3 = idx * 3;
@@ -1579,7 +1609,7 @@ void RigFEM::RiggedMesh::getVertexPosition( EigVec& pos )
 	}
 
 
-	for (int i = 0; i < m_surfPntIdx.size(); ++i)
+	for (int i = 0; i < m_nSurfPnt; ++i)
 	{
 		int idx = m_surfPntIdx[i];
 		int idx3 = idx * 3;
@@ -1602,10 +1632,10 @@ bool RigFEM::RiggedMesh::updateExternalAndControlForce()
 	}
 
 	m_extForce = extForce;
-	for (int i = 0; i < m_surfDofIdx.size(); ++i)
+	for (int i = 0; i < m_nSurfDof; ++i)
 	{
 		int idx = m_surfDofIdx[i];
-		m_extForce[idx] = surfForce[i];
+		m_extForce[idx] += surfForce[i];
 	}
 	if (m_controlType == CONTROL_EXPLICIT_FORCE)
 	{
@@ -1692,6 +1722,120 @@ bool RigFEM::RiggedMesh::clearElementMaterialFactor()
 	return true;
 }
 
+bool RigFEM::RiggedMesh::computeControlEnergy( const EigVec& param, double& energy )
+{
+	EigVec pGain, dGain;
+	if(!m_rigObj->getControlGain(pGain, dGain))
+		return false;
+
+	int nParam = m_targetParam.size();
+	if (param.size() != nParam)
+		return false;
+
+	EigVec quadCoef(nParam);
+	EigVec k0(nParam);
+	for (int i = 0; i < nParam; ++i)
+	{
+		k0[i] = pGain[i] * m_targetParam[i] + 
+			dGain[i] * m_targetParamVelocity[i] +
+			dGain[i] * m_param[i] / m_h;
+
+		quadCoef[i] = pGain[i] + dGain[i] / m_h;
+	}
+
+	energy = 0;
+	for (int i = 0; i < nParam; ++i)
+	{
+		energy += 0.5 * param[i] * param[i] * quadCoef[i] - k0[i] * param[i];
+	}
+	return true;
+}
+
+bool RigFEM::RiggedMesh::computeElementLaplacian( vector<NeighIdx>& adjList )
+{
+	if (!m_tetMesh)
+		return false;
+	int nEle = m_tetMesh->getNumElements();
+	if (nEle <= 0)
+		return false;
+
+	map<OrderedPair, vector<int>> neighMap;
+	for (int ithEle = 0; ithEle < nEle; ++ithEle)
+	{
+		int vtxID[4] = {
+			m_tetMesh->getVertexIndex(ithEle,0),
+			m_tetMesh->getVertexIndex(ithEle,1),
+			m_tetMesh->getVertexIndex(ithEle,2),
+			m_tetMesh->getVertexIndex(ithEle,3)
+		};
+
+		std::sort(vtxID,&vtxID[0]+4);
+		neighMap[OrderedPair(vtxID[0],vtxID[1],vtxID[2])].push_back(ithEle);
+		neighMap[OrderedPair(vtxID[1],vtxID[2],vtxID[3])].push_back(ithEle);
+		neighMap[OrderedPair(vtxID[0],vtxID[2],vtxID[3])].push_back(ithEle);
+		neighMap[OrderedPair(vtxID[0],vtxID[1],vtxID[3])].push_back(ithEle);
+	}
+
+	adjList.clear();
+	adjList.resize(nEle);
+	for (map<OrderedPair, vector<int>>::iterator pFace = neighMap.begin();
+		pFace != neighMap.end(); ++pFace)
+	{
+		vector<int>& eleID = pFace->second;
+		if (eleID.size() < 2)
+			continue;
+		if (eleID.size() != 2)
+		{
+			PRINT_F("wrong face has %d neighbour", eleID.size());
+			continue;
+		}
+
+		int ele1 = eleID[0];
+		int ele2 = eleID[1];
+		adjList[ele1].push_back(ele2);
+		adjList[ele2].push_back(ele1);
+	}
+	return false;
+}
+
+const vector<int> RigFEM::RiggedMesh::getInternalPntIdx() const
+{
+	vector<int> intPntIdx(m_nIntPnt);
+	std::copy(m_intPntIdx, m_intPntIdx+m_nIntPnt, intPntIdx.begin());
+	return intPntIdx;
+}
+
+const vector<int> RigFEM::RiggedMesh::getSurfacePntIdx() const
+{
+	vector<int> surfPntIdx(m_nSurfPnt);
+	std::copy(m_surfPntIdx, m_surfPntIdx+m_nSurfPnt, surfPntIdx.begin());
+	return surfPntIdx;
+}
+
+bool RigFEM::RiggedMesh::allocateTempData()
+{
+	m_forceModel->GetTangentStiffnessMatrixTopology(&m_tangentStiffnessMatrix);
+	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_surfDofIdx, m_nSurfDof, m_nSurfDof, m_dFss);
+	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_surfDofIdx, m_intDofIdx,  m_nSurfDof,  m_nIntDof, m_dFsn);
+	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_surfDofIdx, m_nIntDof,  m_nSurfDof, m_dFns);
+	Utilities::vegaSparse2Eigen(*m_tangentStiffnessMatrix, m_intDofIdx,  m_intDofIdx,  m_nIntDof,  m_nIntDof,  m_dFnn);
+
+	m_intDofBuf.resize(m_nIntDof);
+	m_surfDofBuf.resize(m_nSurfDof);
+	m_totDofBuf.resize(m_nTotPnt*3);
+	return true;
+}
+
+bool RigFEM::RiggedMesh::freeTempData()
+{
+	delete m_tangentStiffnessMatrix;
+	m_tangentStiffnessMatrix = NULL;
+	m_dFnn = m_dFns = m_dFsn = m_dFss = EigSparse();
+
+	m_intDofBuf = m_surfDofBuf = m_totDofBuf = EigVec();
+	return true;
+}
+
 
 void RigFEM::FEMSystem::init()
 {
@@ -1734,4 +1878,18 @@ void RigFEM::MeshDispConfig::beginColorMaterial()
 
 	glEnable(GL_COLOR_MATERIAL);
 	glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);  
+
+	GLfloat specular[] = {0,0,0,0};
+	GLfloat shininess[]  = {0};
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, specular);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, shininess);
+}
+
+bool RigFEM::RiggedMesh::OrderedPair::operator<( const OrderedPair& o ) const
+{
+	if (m_k1 != o.m_k1)
+		return m_k1 < o.m_k1;
+	if (m_k2 != o.m_k2)
+		return m_k2 < o.m_k2;
+	return m_k3 < o.m_k3;
 }

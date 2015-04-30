@@ -89,7 +89,7 @@ namespace RigFEM
 		int				  m_paramLength;
 		int				  m_startFrame;
 		vector<RigStatus> m_statusList;
-		vector<int>		  m_intPntIdx, m_surfPntIdx;
+		vector<int>		  m_intPntIdx, m_surfPntIdx;				// 索引从1开始
 		vector<double>	  m_initPntPos;
 	};
 }

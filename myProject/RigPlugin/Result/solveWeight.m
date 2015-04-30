@@ -3,7 +3,8 @@ function W = solveWeight(dataFileName)
     eval(dataFileName);
 
     nFrame = size(q,1);
-    pos = q;%repmat(initPos, [nFrame,1]) + q; 
+    pos = q;
+	%repmat(initPos, [nFrame,1]) + q; 
     %plotPnt(pos(10,:))
     
     % prepare indices
@@ -13,13 +14,13 @@ function W = solveWeight(dataFileName)
     % build coef matrix
     % A = [x; y; z], x = [frame1X; frame2X; ... ; frameNX]
     surfIdx = (surfPntIdx-1)*3;
-    A = [pos(:, surfIdx+1); pos(:, surfIdx+2); pos(:, surfIdx+3)];
+    A = [pos(:, surfIdx+1); pos(:, surfIdx+2); pos(:, surfIdx+3); ones(1,nSurfPnt)];
     
     % W = (nSurfPnt, nIntPnt)
     W = zeros(nSurfPnt, nIntPnt);
     for ithIntPnt = 1:nIntPnt
         idx = (intPntIdx(ithIntPnt)-1)*3;
-        b = [pos(:,idx+1); pos(:,idx+2); pos(:,idx+3)];
+        b = [pos(:,idx+1); pos(:,idx+2); pos(:,idx+3);1];
         %x = lsqnonneg(A,b);
         x = nnls(A,b);
         W(:,ithIntPnt) = x;

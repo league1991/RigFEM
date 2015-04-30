@@ -5,7 +5,7 @@ using namespace RigFEM;
 
 const char*const RigFEM::NewtonSolver::s_initStepName = "initStep";
 const char*const RigFEM::NewtonSolver::s_dPName = "deltaPi";
-const char*const RigFEM::NewtonSolver::s_reducedElementGF = "reducedElementGF";
+const char*const RigFEM::NewtonSolver::s_reducedElementGFName = "reducedElementGF";
 
 LineSearcher::~LineSearcher(void)
 {
@@ -255,7 +255,7 @@ bool RigFEM::PointParamSolver::step()
 	if (!m_initStatus.getCustom(s_initStepName, initStepSize))
 		initStepSize = 1e-6;
 	double	  stepSize = initStepSize;
-	m_lineSearch.setC(1e-4, 0.45);
+	m_lineSearch.setC(1e-4, 0.1);
 	m_lineSearch.setMaxZoomIter(15);
 	const double minPStep = 1e-2, maxPStep = 10;		// 限制每步参数变化范围
 	double iterMaxStep = m_iterMaxStepSize;
@@ -279,9 +279,26 @@ bool RigFEM::PointParamSolver::step()
 			dx = -G;
 		else
 		{
-			dx = -G + dx0 * G.dot(G) / G0.dot(G0);
+			double GTG  = G.dot(G);
+			double G0TG0 = G0.dot(G0);
+			double GTG0  = G.dot(G0);
+#if CG_METHOD == FR_CG
+			double beta = GTG / G0TG0;
+#else
+			double beta = (GTG - GTG0) / G0TG0;
+			//beta = max(beta, 0.0);
+#endif
+			dx = -G + dx0 * beta;
 			if (G.dot(dx) > 0)
+			{
+				PRINT_F("not decent dir");
 				dx = -G;
+			}
+			if (abs(GTG0)/GTG >= 0.1)
+			{
+				PRINT_F("restart");
+				dx = -G;
+			}
 		}
 
 		// 选择合适的初始步长
@@ -719,7 +736,7 @@ bool RigFEM::PointParamSolver::staticSolveWithEleGF( const EigVec& curParam )
 		tp.setZero(curParam.size());
 	}
 	m_finalStatus = RigStatus(q,v,a,p,pv,f, tp);
-	m_finalStatus.addOrSetCustom(s_reducedElementGF, A);
+	m_finalStatus.addOrSetCustom(s_reducedElementGFName, A);
 	return m_recorder.setStatus(m_curFrame+1, m_finalStatus);
 }
 
@@ -786,7 +803,7 @@ bool RigFEM::ParamSolver::step()
 		initStepSize = 1e-6;
 	double	  stepSize = initStepSize;
 
-	m_lineSearch.setC(1e-4, 0.45);
+	m_lineSearch.setC(1e-4, 0.1);
 	m_lineSearch.setMaxZoomIter(15);
 	const double minPStep = 1e-2, maxPStep = 10;		// 限制每步参数变化范围
 	double iterMaxStep = m_iterMaxStepSize;
@@ -807,9 +824,25 @@ bool RigFEM::ParamSolver::step()
 			dP = -G;
 		else
 		{
-			dP = -G + dP0 * G.dot(G) / G0.dot(G0);
+			double GTG  = G.dot(G);
+			double G0TG0 = G0.dot(G0);
+			double GTG0  = G.dot(G0);
+#if CG_METHOD == FR_CG
+			double beta = GTG / G0TG0;
+#else
+			double beta = max(GTG - GTG0, 0.0) / G0TG0;
+#endif
+			dP = -G + dP0 * beta;
 			if (G.dot(dP) > 0)
+			{
+				PRINT_F("not decent dir");
 				dP = -G;
+			}
+			if (abs(GTG0)/GTG >= 0.1)
+			{
+				PRINT_F("restart");
+				dP = -G;
+			}
 		}
 
 		// 选择合适的初始步长
@@ -1008,7 +1041,7 @@ bool RigFEM::ParamSolver::staticSolveWithEleGF( const EigVec& curParam )
 		tp.setZero(curParam.size());
 	}
 	m_finalStatus = RigStatus(q,v,a,p,pv,f, tp);
-	m_finalStatus.addOrSetCustom(s_reducedElementGF, A);
+	m_finalStatus.addOrSetCustom(s_reducedElementGFName, A);
 	return m_recorder.setStatus(m_curFrame+1, m_finalStatus);
 }
 

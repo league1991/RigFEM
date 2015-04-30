@@ -25,19 +25,20 @@ void Utilities::vegaSparse2Eigen( const SparseMatrix& src, EigSparse& tar , int 
 }
 
 void Utilities::vegaSparse2Eigen( const SparseMatrix& src, 
-								  const vector<int>& rowID, const vector<int>& colID,
+								  const int* rowID, const int* colID,
+								  int nRows, int nCols,
 								  EigSparse& tar)
 {
 	typedef Eigen::Triplet<double> Tri;
 	vector<Tri> triList;
-	for (int ithTarRow = 0; ithTarRow < rowID.size(); ++ithTarRow)
+	for (int ithTarRow = 0; ithTarRow < nRows; ++ithTarRow)
 	{
 		// 找到原矩阵对应的行
 		int ithSrcRow = rowID[ithTarRow];	
 		for (int ithSrcEntry = 0, ithTarCol = 0; ithSrcEntry < src.GetRowLength(ithSrcRow); ++ithSrcEntry)
 		{
 			int ithSrcCol = src.GetColumnIndex(ithSrcRow, ithSrcEntry);		// 原矩阵元素的列号
-			while (ithTarCol < colID.size()-1 && colID[ithTarCol] < ithSrcCol)// 找到大于等于这个列号的最小目标列号
+			while (ithTarCol < nCols-1 && colID[ithTarCol] < ithSrcCol)     // 找到大于等于这个列号的最小目标列号
 				ithTarCol++;
 
 			if (ithSrcCol == colID[ithTarCol])								// 若当前列在目标列号中，加入目标矩阵
@@ -47,8 +48,39 @@ void Utilities::vegaSparse2Eigen( const SparseMatrix& src,
 			}
 		}
 	}
-	tar = EigSparse(rowID.size(), colID.size());
+	tar = EigSparse(nRows, nCols);
 	tar.setFromTriplets(triList.begin(), triList.end());
+}
+
+void Utilities::vegaSparse2AllocatedEigen( const SparseMatrix& src, 
+								 const int* rowID, const int* colID,
+								 int nRows, int nCols,
+								 EigSparse& tar)
+{
+#ifdef ROW_MAJOR
+	// 此函数把vega函数转成eigen的稀疏矩阵数据，eigen稀疏矩阵预先已被分配空间，非零元分布与vega稀疏矩阵一样
+	for (int ithTarRow = 0; ithTarRow < nRows; ++ithTarRow)
+	{
+		// 找到原矩阵对应的行
+		int ithSrcRow = rowID[ithTarRow];	
+		EigSparse::InnerIterator it(tar, ithTarRow);
+		for (int ithSrcEntry = 0, ithTarCol = 0; ithSrcEntry < src.GetRowLength(ithSrcRow); ++ithSrcEntry)
+		{
+			int ithSrcCol = src.GetColumnIndex(ithSrcRow, ithSrcEntry);		// 原矩阵元素的列号
+			while (ithTarCol < nCols-1 && colID[ithTarCol] < ithSrcCol)     // 找到大于等于这个列号的最小目标列号
+				ithTarCol++;
+
+			if (colID[ithTarCol] == ithSrcCol)								// 若当前列在目标列号中，加入目标矩阵
+			{
+				double v = src.GetEntry(ithSrcRow, ithSrcEntry);
+				it.valueRef() = v;												// Eigen 行内迭代器前进一步
+				++it;
+			}
+		}
+	}
+#else
+	vegaSparse2Eigen(src, rowID, colID, nRows, nCols, tar);
+#endif
 }
 
 void Utilities::mergeVec( const EigVec& v1, const EigVec& v2, EigVec& v )
@@ -270,6 +302,20 @@ bool RigFEM::Utilities::kronecker3X( EigSparse& src, EigSparse& dst )
 	int nCol = src.cols();
 
 	vector<Tri> triList;
+#ifdef ROW_MAJOR
+	for (int r = 0; r < nRow; ++r)
+	{
+		for (EigSparse::InnerIterator it(src, r); it; ++it)  
+		{
+			double v = it.value();
+			int rId = it.row() * 3;   // row index
+			int cId = it.col() * 3;   // col index (here it is equal to k)
+			triList.push_back(Tri(rId, cId, v));	rId++; cId++;
+			triList.push_back(Tri(rId, cId, v));	rId++; cId++;
+			triList.push_back(Tri(rId, cId, v));
+		}
+	}
+#else
 	for (int c = 0; c < nCol; ++c)
 	{
 		for (EigSparse::InnerIterator it(src, c); it; ++it)  
@@ -282,6 +328,7 @@ bool RigFEM::Utilities::kronecker3X( EigSparse& src, EigSparse& dst )
 			triList.push_back(Tri(rId, cId, v));
 		}
 	}
+#endif
 
 	dst = EigSparse(nRow*3, nCol*3);
 	dst.setFromTriplets(triList.begin(), triList.end());

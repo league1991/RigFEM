@@ -119,6 +119,7 @@ global proc execSimulator(string $nodeName, int $type)
 		
 	int  $begTime = `currentTime -q`;
 	int  $t;
+	$startSecond = `timerX`;
 	for ($t = $begTime; $t < $begTime + $length; $t++)
 	{	
 		// step progress bar
@@ -128,6 +129,7 @@ global proc execSimulator(string $nodeName, int $type)
         progressBar -edit -step 1 $gMainProgressBar;
 			
 		int $res;
+		$frameStartSecond = `timerX`;
 		switch($type)
 		{
 		case 0:
@@ -139,10 +141,22 @@ global proc execSimulator(string $nodeName, int $type)
 		case 2:
 			$res = `rigSimulate -stepEleGF -name $nodeName`;
 		}
+		$frameTotalSecond = `timerX -startTime $frameStartSecond`;
+		print ("Computation Time: "+$frameTotalSecond+"s\n");
+		
 		if($res == 0)
 			break;
 				
 		currentTime ($t+1);
+	}
+	// code that is being timed
+	$totalSecond = `timerX -startTime $startSecond`;
+	$totalFrame= $t - $begTime;
+	if ($totalFrame != 0)
+	{
+		float $timeRate = $totalSecond / float($totalFrame);
+		print ("Total Time: "+$totalSecond+"s\n");
+		print ("Average Time: "+$timeRate+"s\n");
 	}
 	
 	// delete progress bar

@@ -42,7 +42,7 @@
 #include "Eigen/QR"
 #include "Eigen/SuperLUSupport"
 
-typedef Eigen::SparseMatrix<double> EigSparse;
+typedef Eigen::SparseMatrix<double,Eigen::RowMajor> EigSparse;
 typedef Eigen::MatrixXd				EigDense;
 typedef Eigen::VectorXd				EigVec;
 

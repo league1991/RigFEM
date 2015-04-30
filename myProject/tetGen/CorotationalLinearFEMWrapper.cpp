@@ -518,11 +518,30 @@ void CorotationalLinearFEMWrapper::ComputeForceAndStiffnessMatrixOfSubmesh( doub
 
 												// add RK * b to column of KElement
 												int rowStart = 0;
+												double* pRK = RK;
 												for (int row=0; row<12; row++)
 												{
 													double contrib = 0.0;
-													for (int j=0; j<12; j++)
-														contrib += RK[rowStart + j] * b[j];
+// 													for (int j=0; j<12; j++)
+// 														contrib += RK[rowStart + j] * b[j];
+
+													// 进行优化
+													double* pb  = b;
+													contrib += *pRK * *pb;	pRK++; pb++;
+													contrib += *pRK * *pb;	pRK++; pb++;
+													contrib += *pRK * *pb;	pRK++; pb++;
+													contrib += *pRK * *pb;	pRK++; pb++;
+													contrib += *pRK * *pb;	pRK++; pb++;
+
+													contrib += *pRK * *pb;	pRK++; pb++;
+													contrib += *pRK * *pb;	pRK++; pb++;
+													contrib += *pRK * *pb;	pRK++; pb++;
+													contrib += *pRK * *pb;	pRK++; pb++;
+													contrib += *pRK * *pb;	pRK++; pb++;
+
+													contrib += *pRK * *pb;	pRK++; pb++;
+													contrib += *pRK * *pb;	pRK++; pb++;
+
 													KElement[rowStart + column] += contrib;
 													rowStart += 12;
 												}

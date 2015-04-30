@@ -228,12 +228,32 @@ bool RigFEM::RigSimulator::saveGFResult( const char* fileName )
 	if (!file)
 		return false;
 
-	m_recorder->addCustomToFile(m_solver->s_reducedElementGF, file);
+	m_recorder->addCustomToFile(m_solver->s_reducedElementGFName, file);
 
 	char buf[50];
 	int nParam = m_rigMesh->getNParam();
 	sprintf(buf, "nParam = %d;\n", nParam);
-	file << buf;
+	file << buf << endl;
+
+	const vector<RiggedMesh::NeighIdx>& eleAdjList = m_rigMesh->getElementAdjList();
+	file << "% Laplacian" << endl;
+	file << "L = sparse(nParam, nParam);\n";
+	for (int ithEle = 0; ithEle < eleAdjList.size(); ++ithEle)
+	{
+		const RiggedMesh::NeighIdx& adj = eleAdjList[ithEle];
+		int nAdj = adj.size();
+
+		sprintf(buf, "L(%d,%d)=1;", ithEle+1, ithEle+1);
+		file << buf << endl;
+
+		for (int ithAdj = 0; ithAdj < nAdj; ++ithAdj)
+		{
+			sprintf(buf, "L(%d,%d)=%lf;", ithEle+1, adj[ithAdj]+1, -1.0/nAdj);
+			file << buf << endl;
+		}
+		file << endl;
+	}
+
 	file.close();
 
 	return true;

@@ -389,7 +389,7 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setWritable(true); 
 	nAttr.setReadable(true);
 	nAttr.setMin(0.001);
-	nAttr.setMax(1e7);
+	nAttr.setMax(1e15);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	m_maxIter = nAttr.create(m_maxIterName[0], m_maxIterName[1], MFnNumericData::kInt,10, &s);
@@ -399,7 +399,7 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setWritable(true); 
 	nAttr.setReadable(true);
 	nAttr.setMin(0);
-	nAttr.setMax(50);
+	nAttr.setMax(100);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	m_simType = eAttr.create(m_simTypeName[0], m_simTypeName[1]);
@@ -431,7 +431,7 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setWritable(true); 
 	nAttr.setReadable(true);
 	nAttr.setMin(0);
-	nAttr.setMax(50);
+	nAttr.setMax(10000);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	m_cgMinStepSize = nAttr.create(m_cgMinStepSizeName[0], m_cgMinStepSizeName[1], MFnNumericData::kDouble,10, &s);
