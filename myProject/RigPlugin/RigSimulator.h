@@ -6,6 +6,12 @@ namespace RigFEM
 	class SimulatorBase
 	{
 	public:
+		enum MaterialFitType
+		{
+			FIT_GENERAL_FORCE,
+			FIT_GENERAL_FORCE_DERIVATIVE
+		};
+
 		SimulatorBase(): m_rigMesh(NULL){}
 		virtual ~SimulatorBase(){}
 
@@ -18,7 +24,7 @@ namespace RigFEM
 		virtual bool saveResult(const char* fileName)=0;
 
 		// 修改四面体硬度各项功能
-		virtual bool stepAndSaveEleGFRig(int curFrame, const EigVec& curParam){return false;}
+		virtual bool stepAndSaveEleGFRig(int curFrame, const EigVec& curParam, MaterialFitType fitType = FIT_GENERAL_FORCE){return false;}
 		virtual bool saveGFResult(const char* fileName) = 0;
 		virtual bool loadElementMaterialFactor(const char* fileName);
 		virtual bool resetElementMaterialFactor();
@@ -68,7 +74,7 @@ namespace RigFEM
 
 		bool			stepRig(int curFrame);
 		bool			staticStepRig(int curFrame, const EigVec& curParam);
-		bool			stepAndSaveEleGFRig(int curFrame, const EigVec& curParam);
+		bool			stepAndSaveEleGFRig(int curFrame, const EigVec& curParam, MaterialFitType fitType = FIT_GENERAL_FORCE);
 
 		bool			setStaticSolveMaxIter(int maxIter);
 		bool			setDeriStepSize(double step);

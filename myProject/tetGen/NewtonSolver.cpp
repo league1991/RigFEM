@@ -563,7 +563,7 @@ bool RigFEM::NewtonSolver::getCurCtrlParam( EigVec& tarParam, EigVec& tarParamVe
 	}
 	else
 	{
-		Global::showVector(s->getTarP(), "lastTarget");
+		//Global::showVector(s->getTarP(), "lastTarget");
 		tarParamVelocity = (tarParam - s->getTarP()) / m_femBase->getStepTime();
 	}
 	return true;
@@ -695,7 +695,7 @@ bool RigFEM::PointParamSolver::computeStaticJacobian( const EigVec& curParam, Ei
 	return true;
 }
 
-bool RigFEM::PointParamSolver::staticSolveWithEleGF( const EigVec& curParam )
+bool RigFEM::PointParamSolver::staticSolveWithEleGFOrHessian( const EigVec& curParam, bool isGF)
 {
 	RigStatus s;
 	bool res = m_recorder.getStatus(m_curFrame, s);
@@ -722,7 +722,10 @@ bool RigFEM::PointParamSolver::staticSolveWithEleGF( const EigVec& curParam )
 		return false;
 	EigDense JT = J.transpose();
 	EigDense A;
-	m_fem->computeReducedForceMatrix(q, JT, A);
+	if (isGF)
+		m_fem->computeReducedForceMatrix(q, JT, A);
+	else
+		m_fem->computeReducedHessianMatrix(q,JT, A);
 
 	// ¼ÇÂ¼½á¹û
 	double dt = m_fem->getStepTime();
@@ -738,6 +741,16 @@ bool RigFEM::PointParamSolver::staticSolveWithEleGF( const EigVec& curParam )
 	m_finalStatus = RigStatus(q,v,a,p,pv,f, tp);
 	m_finalStatus.addOrSetCustom(s_reducedElementGFName, A);
 	return m_recorder.setStatus(m_curFrame+1, m_finalStatus);
+}
+
+bool RigFEM::PointParamSolver::staticSolveWithEleGF( const EigVec& curParam )
+{
+	return staticSolveWithEleGFOrHessian(curParam, true);
+}
+
+bool RigFEM::PointParamSolver::staticSolveWithEleHessian( const EigVec& curParam )
+{
+	return staticSolveWithEleGFOrHessian(curParam, false);
 }
 
 bool RigFEM::SimpleFunction::computeValueAndGrad( const EigVec& x, double* v /*= NULL*/, EigVec* grad /*= NULL*/ )

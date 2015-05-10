@@ -108,6 +108,7 @@ namespace RigFEM
 		virtual bool step()=0;
 		virtual bool staticSolve(const EigVec& curParam){return false;}
 		virtual bool staticSolveWithEleGF(const EigVec& curParam){return false;}
+		virtual bool staticSolveWithEleHessian(const EigVec& curParam){return false;}
 
 		void setIterationMaxStepSize(double maxStep);
 		
@@ -166,12 +167,16 @@ namespace RigFEM
 		bool staticSolve(const EigVec& curParam);
 		// 静态求解,并算出各个有限元的广义力记录下来
 		bool staticSolveWithEleGF(const EigVec& curParam);
+		// 静态求解,并算出各个有限元的广义力导数,记录下来
+		bool staticSolveWithEleHessian(const EigVec& curParam);
 
 		void clearResult(){m_paramResult.clear();}
 		void saveResult(const char* fileName, const char* paramName = "param");
 
 		virtual void setControlType(RigControlType type);
 	private:
+		bool staticSolveWithEleGFOrHessian(const EigVec& curParam, bool isGF = true);
+
 		// 给定参数值，利用力平衡条件计算出内部点位置，
 		// 参数值发生变化时，把表面点，内部点都看成参数的函数
 		// 计算出这个向量值函数的雅可比矩阵

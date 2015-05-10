@@ -269,16 +269,21 @@ void RigFEM::StatusRecorder::setPntIdx( const vector<int>& intPntIdx, const vect
 
 void RigFEM::StatusRecorder::customMat2Str( const char* stateName, const char* matlabVarName, string& str )const
 {
+	int nElement = 0;
+
 	str = "";
 	str += matlabVarName;
 	str += "=[\n";
+	char numberBuf[100];
 	for (int ithFrame = 0; ithFrame < m_statusList.size(); ++ithFrame)
 	{
 		const RigStatus& status = m_statusList[ithFrame];
 		EigDense m;
 		if (status.getCustom(stateName, m))
 		{
-			char numberBuf[100];
+			nElement++;
+			sprintf_s(numberBuf, 100, "%d ", m.rows());
+
 			for (int i = 0; i < m.rows(); ++i)
 			{
 				for (int j = 0; j < m.cols(); ++j)
@@ -292,6 +297,9 @@ void RigFEM::StatusRecorder::customMat2Str( const char* stateName, const char* m
 		}
 	}
 	str += "\n];\n";
+
+	sprintf_s(numberBuf, 100, "%sCount = %d;\n", matlabVarName, nElement);
+	str += numberBuf;
 }
 
 bool RigFEM::StatusRecorder::saveCustomToFile( const char* customParamName, const char* fileName ) const

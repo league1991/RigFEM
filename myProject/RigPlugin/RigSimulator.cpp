@@ -207,7 +207,7 @@ bool RigFEM::RigSimulator::setControlType( RigControlType type )
 	return true;
 }
 
-bool RigFEM::RigSimulator::stepAndSaveEleGFRig( int curFrame, const EigVec& curParam )
+bool RigFEM::RigSimulator::stepAndSaveEleGFRig( int curFrame, const EigVec& curParam, MaterialFitType fitType)
 {
 	if (!m_rig || !m_rigMesh || !m_solver || !m_recorder)
 		return false;
@@ -216,7 +216,15 @@ bool RigFEM::RigSimulator::stepAndSaveEleGFRig( int curFrame, const EigVec& curP
 	m_solver->setCurrentFrame(curFrame);
 
 	// 获得上一帧状态
-	return m_solver->staticSolveWithEleGF(curParam);
+	switch(fitType)
+	{
+	case FIT_GENERAL_FORCE:
+		return m_solver->staticSolveWithEleGF(curParam);
+	case FIT_GENERAL_FORCE_DERIVATIVE:
+		return m_solver->staticSolveWithEleHessian(curParam);
+	default:
+		return false;
+	}
 }
 
 bool RigFEM::RigSimulator::saveGFResult( const char* fileName )

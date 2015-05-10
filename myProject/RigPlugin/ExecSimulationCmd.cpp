@@ -101,7 +101,7 @@ MStatus RigSimulateCmd::doIt( const MArgList& args )
 			}
 			else if (isRecordGFFlagSet)
 			{
-				res &= node->stepWithEleGF();
+				res &= node->stepWithEleHessianOrGF();
 			}
 			else if (isHessianFlagSet)
 			{

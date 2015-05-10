@@ -77,6 +77,7 @@ namespace RigFEM
 
 		int  getPointVecLength()const{return m_pntLength;}
 		int  getParamVecLength()const{return m_paramLength;}
+		int  getRecordFrameLength()const{return m_statusList.size();}
 
 		bool saveToFile(const char* fileName)const;
 		bool saveCustomToFile(const char* customParamName, const char* fileName)const;

@@ -40,7 +40,7 @@ public:
 	bool				resetRig();
 	bool				stepRig();					// 动态模拟
 	bool				staticStepRig();			// 静态模拟
-	bool				stepWithEleGF();			// 静态模拟，并保持每个元素的广义力
+	bool				stepWithEleHessianOrGF();			// 静态模拟，并保持每个元素的广义力
 	bool				saveGFResult(const char* fileName);
 	bool				loadElementMaterial();
 	bool				resetElementMaterial();
@@ -121,6 +121,7 @@ private:
 	static MObject		m_maxFactor;			// 
 	static MObject		m_cutAxis;				// 切割轴向
 	static MObject		m_cutRatio;				// 切割比例
+	static MObject		m_materialFitType;				// 拟合广义力还是广义力导数
 
 	// 共轭梯度法参数
 	static MObject		m_cgMinStepSize;		// 迭代的最小步长，若步长小于此值，终止迭代
@@ -196,6 +197,7 @@ private:
 	static const char*	m_cutAxisName[2];				// 切割轴向
 	static const char*	m_cutRatioName[2];				// 切割比例
 	static const char*  m_materialPathName[2];			// 材料相对硬度文件
+	static const char*  m_materialFitTypeName[2];
 
 
 	SimulationType		m_simTypeFlag;

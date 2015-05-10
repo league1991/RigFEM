@@ -55,7 +55,9 @@ const char* RigSimulationNode::m_materialPathName[2] = {"materialPath", "matPath
 const char* RigSimulationNode::m_dispBBoxName[2] = {"displayBoundingBox","dispBBox"};
 const char* RigSimulationNode::m_dispEdgeName[2] = {"displayEdge", "dispEdge"};
 const char* RigSimulationNode::m_dispVertexName[2] = {"displayVertex", "dispVtx"};
+const char* RigSimulationNode::m_materialFitTypeName[2] = {"materialFitType","mfitType"};
 
+MObject RigSimulationNode::m_materialFitType;
 MObject RigSimulationNode::m_dispBBox;
 MObject RigSimulationNode::m_dispEdge;
 MObject RigSimulationNode::m_dispVertex;
@@ -704,6 +706,15 @@ MStatus RigSimulationNode::initialize()
 	nAttr.setMin(0);
 	nAttr.setMax(1);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
+
+	m_materialFitType = eAttr.create(m_materialFitTypeName[0], m_materialFitTypeName[1]);
+	eAttr.addField("General Force",  RigSimulator::FIT_GENERAL_FORCE);
+	eAttr.addField("General Force Derivative",  RigSimulator::FIT_GENERAL_FORCE_DERIVATIVE);
+	eAttr.setHidden(false);
+	eAttr.setReadable(true);
+	eAttr.setWritable(true);
+	eAttr.setStorable(true);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
 	}
 
 	s = addAttribute(m_param);
@@ -795,6 +806,8 @@ MStatus RigSimulationNode::initialize()
 	s = addAttribute(m_cutRatio);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 	s = addAttribute(m_materialPath);
+	CHECK_MSTATUS_AND_RETURN_IT(s);
+	s = addAttribute(m_materialFitType);
 	CHECK_MSTATUS_AND_RETURN_IT(s);
 
 	s = attributeAffects(m_time, m_param);					// 驱动节点求值
@@ -1237,7 +1250,7 @@ bool RigSimulationNode::staticStepRig()
 	return true;
 }
 
-bool RigSimulationNode::stepWithEleGF()
+bool RigSimulationNode::stepWithEleHessianOrGF()
 {
 
 	if (!m_simulator || !m_simulator->isReady())
@@ -1245,10 +1258,13 @@ bool RigSimulationNode::stepWithEleGF()
 
 	updateDeriStepSize();
 
+	MPlug fitTypePlug = Global::getPlug(this, m_materialFitTypeName[0]);
+	RigSimulator::MaterialFitType fitType = (RigSimulator::MaterialFitType)fitTypePlug.asShort();
+
 	int curFrame = getCurFrame();
 	EigVec initParam;
 	getInitParam(initParam);
-	m_simulator->stepAndSaveEleGFRig(curFrame, initParam);
+	m_simulator->stepAndSaveEleGFRig(curFrame, initParam, fitType);
 	return true;
 }
 
@@ -1313,10 +1329,17 @@ MStatus RigSimulationNode::getInputForce( EigVec& fieldForce, EigVec& surfForce 
 		int   logIdx    = forcePlug.logicalIndex();
 		MObject forceObj = forcePlug.asMObject();
 		MFnVectorArrayData forceData(forceObj, &s);
-		if (!s)	continue;
+		if (!s)
+		{
+			PRINT_F("cannot get force data");
+			continue;
+		}
 		int vecLength = forceData.length();
 		if (vecLength * 3 != nDof)
+		{
+			PRINT_F("force data length(%d) is not matched with DOF(%d)", vecLength*3, nDof);
 			continue;
+		}
 
 		// 获得外力因子和位图数据
 		MPlug forceBitmapPlug = surfForceBitmapArrayPlug.elementByLogicalIndex(logIdx, &s);
@@ -1599,6 +1622,7 @@ bool RigSimulationNode::resetElementMaterial()
 	}
 	return m_simulator->resetElementMaterialFactor();
 }
+
 
 
 

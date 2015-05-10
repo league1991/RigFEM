@@ -79,11 +79,15 @@ global proc initSimulator(string $nodeName)
 	float $pnt[3] = {0,0,0};
 	if(`size($ptclShape)` != 0 && `objExists $ptclShape`)
 	{
+		int $frame = `currentTime -q`;
+		if($frame == 1)
+		{
+			currentTime 2;
+		}
 		clearParticleStartState $ptclShape; 
 		currentTime 1;
 		
 		// add particles
-		int $frame = `currentTime -q`;
 		int $i;
 		for($i = 0; $i < $nPnt; ++$i)
 		{        
@@ -260,8 +264,8 @@ global proc initAdaptiveMaterial(string $attrName)
 {
 	string $nodeName = `plugNode $attrName`;	
 	setUITemplate -pst "attributeEditorTemplate";		
-		button -label "Simulate And Record General Force" -c ("execSimulator " + $nodeName + " 2") simWithGFButton;
-		button -label "Save General Force Data" -c ("saveGeneralForceData " + $nodeName) saveGFButton;
+		button -label "Simulate And Record Force Data" -c ("execSimulator " + $nodeName + " 2") simWithGFButton;
+		button -label "Save Force Data" -c ("saveGeneralForceData " + $nodeName) saveGFButton;
 		button -label "Load Element Material" -c ("rigSimulate -name " + $nodeName + " -loadEleMat") loadMatButton;
 		button -label "Reset Element Material" -c ("rigSimulate -name " + $nodeName + " -resetEleMat") resetMatButton;
 	setUITemplate -ppt;
@@ -331,6 +335,7 @@ global proc AErigSimulatorTemplate(string $nodeName)
 				editorTemplate -addControl "maxColorFactor";
 				editorTemplate -addControl "cutAxis";
 				editorTemplate -addControl "cutPlaneRatio";
+				editorTemplate -addControl "materialFitType";
 				editorTemplate -callCustom "initAdaptiveMaterial" "modifyAdaptiveMaterial" "noAttr";
 			editorTemplate -endLayout;
 			

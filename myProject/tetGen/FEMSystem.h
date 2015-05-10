@@ -69,10 +69,11 @@ public:
 	// 其中 T 是参数指定的降维矩阵， 尺寸为低维数x有限元网格自由度数
 	// f1 ... fn 是各个有限元四面体对内力的贡献
 	// 参数q是各个点的位置
-	typedef vector<int> NeighIdx;
 	void computeReducedForceMatrix(	const EigVec& q, const EigDense& T, EigDense& A);
+	void computeReducedHessianMatrix(const EigVec& q, const EigDense& T, EigDense& A);
 	bool loadElementMaterialFactor(EigVec& factor);
 	bool clearElementMaterialFactor();
+	typedef vector<int> NeighIdx;
 	const vector<NeighIdx>& getElementAdjList()const{return m_eleAdjList;}
 
 	// 各种状态变量

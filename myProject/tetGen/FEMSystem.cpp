@@ -1836,6 +1836,11 @@ bool RigFEM::RiggedMesh::freeTempData()
 	return true;
 }
 
+void RigFEM::RiggedMesh::computeReducedHessianMatrix( const EigVec& q, const EigDense& T, EigDense& A )
+{
+	m_modelwrapper->computeReducedHessianMatrix(q.data(), T, A, m_tangentStiffnessMatrix);
+}
+
 
 void RigFEM::FEMSystem::init()
 {
