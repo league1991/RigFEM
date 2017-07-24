@@ -11,4 +11,4 @@ Results
 
 Maya Scene
 --------
-![](https://github.com/league1991/RigFEM/raw/master/ImageCache/maya.png)
+![](https://github.com/league1991/RigFEM/raw/master/ImageCache/maya.gif)
