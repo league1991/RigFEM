@@ -4,10 +4,10 @@ you can find an example here: http://www.cnblogs.com/dydx/p/4290878.html.
 
 Results
 --------
-![](https://github.com/league1991/RigFEM/raw/master/ImageCache/front.png)
-![](https://github.com/league1991/RigFEM/raw/master/ImageCache/frontBefore.png)
-![](https://github.com/league1991/RigFEM/raw/master/ImageCache/back.png)
-![](https://github.com/league1991/RigFEM/raw/master/ImageCache/backBefore.png)
+![](https://github.com/league1991/RigFEM/raw/master/imageCache/front.gif)
+![](https://github.com/league1991/RigFEM/raw/master/imageCache/frontBefore.gif)
+![](https://github.com/league1991/RigFEM/raw/master/imageCache/back.gif)
+![](https://github.com/league1991/RigFEM/raw/master/imageCache/backBefore.gif)
 
 Maya Scene
 --------
